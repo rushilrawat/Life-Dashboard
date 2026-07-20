@@ -296,6 +296,32 @@ last row partial), each tile `--surface`/`--border` default,
 segment control, same selected treatment. Footer: Cancel (ghost) and
 Add Block / Save (filled `--accent`), right-aligned.
 
+## Settings panel
+
+Not separately specified before now — this doc never described one, only
+`ARCHITECTURE.md`'s two-section content list existed. It reuses the
+Add/Edit Block panel's exact treatment (slide-in from the right,
+`--surface-raised`, `--border-strong` left edge, numbered-label
+sections), the only panel precedent this app has, rather than
+inventing a second modal language for one more panel.
+
+**Connectors**: each row is icon + name + url (`--text-muted`, small,
+truncates) + a trash icon, `1px solid var(--border)` beneath each row.
+Removing a connector still referenced by a block doesn't pop a native
+`confirm()` — nothing else in this app uses a browser-native dialog,
+and one would break the fully custom-styled feel everywhere else. The
+row instead swaps in place for an inline warning ("Used by N blocks —
+remove anyway?") with Cancel / Remove, same pattern spirit as
+everything else here staying in-system rather than reaching for a
+platform default.
+
+**Theme**: preset dropdown and a Light/Dark segmented control (same
+`.segmented` treatment as the Add/Edit panel's Local/MCP toggle),
+plus a native `<input type="color">` for the custom accent override —
+no custom color-picker component, the platform picker already does
+this well. A "Reset to preset" text button appears only once a custom
+accent is actually set.
+
 ## States
 
 - **Empty block** (no data yet, or source not configured): muted

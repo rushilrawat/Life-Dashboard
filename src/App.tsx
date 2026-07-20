@@ -3,6 +3,7 @@ import Board from "./components/Board";
 import BlockEditor from "./components/BlockEditor";
 import type { BlockFormData } from "./components/BlockEditor";
 import Header from "./components/Header";
+import SettingsPanel from "./components/SettingsPanel";
 import Sidebar from "./components/Sidebar";
 import * as storage from "./lib/storage";
 import { applyTheme } from "./styles/themes";
@@ -24,6 +25,7 @@ export default function App() {
   const [blocks, setBlocks] = useState<Block[]>(() => storage.get("blocks") ?? []);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     storage.set("settings", settings);
@@ -84,9 +86,10 @@ export default function App() {
         blocks={blocks}
         activeCategory={activeCategory}
         onCategoryChange={setActiveCategory}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
       <main className="main">
-        <Header displayName={settings.displayName} />
+        <Header displayName={settings.displayName} onOpenSettings={() => setSettingsOpen(true)} />
         <Board
           blocks={visibleBlocks}
           onAddBlock={() => setEditor({ mode: "add" })}
@@ -105,6 +108,14 @@ export default function App() {
           connectors={settings.connectors}
           onSave={saveBlock}
           onClose={() => setEditor(null)}
+        />
+      )}
+      {settingsOpen && (
+        <SettingsPanel
+          settings={settings}
+          blocks={blocks}
+          onSettingsChange={updateSettings}
+          onClose={() => setSettingsOpen(false)}
         />
       )}
     </>

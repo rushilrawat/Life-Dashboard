@@ -93,6 +93,11 @@ them back without a specific new reason, "would be nice" is not one.
   through it, no per-block bespoke storage reads. First-run sample
   data lives in `src/lib/seed.ts` (`seedIfEmpty()`, called once from
   `main.tsx`, writes only keys that are still empty).
+- Settings is `src/components/SettingsPanel.tsx`, reusing the same
+  `.editor-*` slide-in panel CSS as the Add/Edit Block panel (see
+  `DESIGN.md`'s Settings panel section for why: it's the only panel
+  precedent the app has, and `DESIGN.md` never specified a separate
+  look for this one).
 - The Add/Edit Block panel is `src/components/BlockEditor.tsx`, one
   component for both modes (`mode: "add" | "edit"`), not two. The
   kebab menu and per-card filter/sort dropdowns live inside

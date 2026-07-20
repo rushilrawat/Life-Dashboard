@@ -9,7 +9,7 @@ function greeting(name: string): string {
   return name ? `${phrase}, ${name}` : phrase;
 }
 
-export default function Header({ displayName }: { displayName: string }) {
+export default function Header({ displayName, onOpenSettings }: { displayName: string; onOpenSettings: () => void }) {
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
@@ -24,12 +24,12 @@ export default function Header({ displayName }: { displayName: string }) {
       </div>
       <div className="header-right">
         <span className="sync-status">Not synced yet</span>
-        {/* Sync and Settings are inert shells until Phases 5 and 4. */}
+        {/* Sync is an inert shell until Phase 5 wires the backend proxy. */}
         <button className="sync-btn" type="button">
           <RefreshCw size={14} />
           Sync
         </button>
-        <button className="icon-btn" type="button" aria-label="Settings">
+        <button className="icon-btn" type="button" aria-label="Settings" onClick={onOpenSettings}>
           <SettingsIcon size={18} />
         </button>
       </div>

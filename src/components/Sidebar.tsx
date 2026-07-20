@@ -8,9 +8,10 @@ interface Props {
   blocks: Block[];
   activeCategory: string | null;
   onCategoryChange: (category: string | null) => void;
+  onOpenSettings: () => void;
 }
 
-export default function Sidebar({ settings, onSettingsChange, blocks, activeCategory, onCategoryChange }: Props) {
+export default function Sidebar({ settings, onSettingsChange, blocks, activeCategory, onCategoryChange, onOpenSettings }: Props) {
   const dark = settings.themeMode === "dark";
 
   // Computed, not hand-configured: one chip per distinct category actually
@@ -48,8 +49,9 @@ export default function Sidebar({ settings, onSettingsChange, blocks, activeCate
           {c.name}
         </div>
       ))}
-      {/* Opens the Settings add form once Phase 4 builds it. */}
-      <button className="connector-row add-connector" type="button">
+      {/* Second entry point into the same Settings.connectors state, not a
+          parallel add flow (ARCHITECTURE.md). */}
+      <button className="connector-row add-connector" type="button" onClick={onOpenSettings}>
         <Plus size={14} />
         Add connector
       </button>
