@@ -224,7 +224,19 @@ Three steps, in this order, matching the reference design:
 
 Editing an existing block reopens this same flow pre-filled. Changing
 the block's type mid-edit is not supported, delete and recreate
-instead, that edge case isn't worth the UI complexity.
+instead, that edge case isn't worth the UI complexity. In practice
+this means the type grid renders every other tile disabled while
+editing, with a one-line hint explaining why, rather than removing the
+step entirely, so the panel still shows what type the block is.
+
+Nothing in this doc placed the trigger that *opens* this panel for a
+brand-new block, every other entry point here is block-level (the
+kebab's "Edit block") or reopens an existing block. It's a dashed-
+outline "+ Add Block" tile at the end of the board grid, sized like any
+other card. This was a genuine gap, not a spec detail, resolved this
+way over a header button or a sidebar row so it doesn't add to either
+of those two surfaces' otherwise-complete, deliberately short
+enumerations elsewhere in this doc and in `DESIGN.md`.
 
 ## Links block: the organizer, not a settings shortcut
 

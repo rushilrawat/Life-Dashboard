@@ -93,6 +93,19 @@ them back without a specific new reason, "would be nice" is not one.
   through it, no per-block bespoke storage reads. First-run sample
   data lives in `src/lib/seed.ts` (`seedIfEmpty()`, called once from
   `main.tsx`, writes only keys that are still empty).
+- The Add/Edit Block panel is `src/components/BlockEditor.tsx`, one
+  component for both modes (`mode: "add" | "edit"`), not two. The
+  kebab menu and per-card filter/sort dropdowns live inside
+  `BlockCard.tsx` itself rather than their own files, they're small
+  and only ever rendered as part of the card shell. Fixed dropdown
+  option lists (`FILTER_OPTIONS`, `SORT_OPTIONS`) live once in
+  `src/lib/localSourceOptions.ts`, shared by the card header and the
+  editor panel so their labels can't drift apart.
+- Block CRUD (add/edit/delete/reorder/resize) lives in `App.tsx`, the
+  only component holding `blocks` state; children only ever call back
+  up to it. Reordering swaps the `order` field between two block ids
+  rather than taking a direction, so it works the same whether
+  Overview or a category filter is the active view.
 - Types live in `src/types.ts`, mirror `DATA_MODEL.md` exactly, if the
   doc and the code drift, fix the code.
 - No inline styles except values computed at runtime (derived accent

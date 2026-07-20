@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import Board from "./components/Board";
+import BlockEditor from "./components/BlockEditor";
+import type { BlockFormData } from "./components/BlockEditor";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import * as storage from "./lib/storage";
 import { applyTheme } from "./styles/themes";
-import type { Settings } from "./types";
+import type { Block, LocalSource, Settings } from "./types";
 
 export const defaultSettings: Settings = {
   displayName: "",
@@ -13,27 +15,98 @@ export const defaultSettings: Settings = {
   connectors: [],
 };
 
+type EditorState = { mode: "add" } | { mode: "edit"; block: Block } | null;
+
 export default function App() {
   const [settings, setSettings] = useState<Settings>(
     () => storage.get("settings") ?? defaultSettings,
   );
-  const [blocks] = useState(() => storage.get("blocks") ?? []);
+  const [blocks, setBlocks] = useState<Block[]>(() => storage.get("blocks") ?? []);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [editor, setEditor] = useState<EditorState>(null);
 
   useEffect(() => {
     storage.set("settings", settings);
     applyTheme(settings);
   }, [settings]);
 
-  const updateSettings = (patch: Partial<Settings>) =>
-    setSettings((s) => ({ ...s, ...patch }));
+  useEffect(() => {
+    storage.set("blocks", blocks);
+  }, [blocks]);
+
+  const updateSettings = (patch: Partial<Settings>) => setSettings((s) => ({ ...s, ...patch }));
+
+  // The only reordering mechanism (no drag, no coordinates): swap the order
+  // field between two blocks. Board passes the on-screen neighbor's id, so
+  // this works the same whether Overview or a category filter is active.
+  function swapOrder(idA: string, idB: string) {
+    setBlocks((bs) => {
+      const a = bs.find((b) => b.id === idA);
+      const b = bs.find((b) => b.id === idB);
+      if (!a || !b) return bs;
+      return bs.map((x) => (x.id === idA ? { ...x, order: b.order } : x.id === idB ? { ...x, order: a.order } : x));
+    });
+  }
+
+  function setWidth(id: string, width: Block["width"]) {
+    setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, width } : b)));
+  }
+
+  function deleteBlock(id: string) {
+    setBlocks((bs) => bs.filter((b) => b.id !== id));
+    storage.remove(`blockdata:${id}`);
+    storage.remove(`sync-cache:${id}`);
+  }
+
+  function updateSource(id: string, source: LocalSource) {
+    setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, source } : b)));
+  }
+
+  function saveBlock(data: BlockFormData) {
+    if (editor?.mode === "edit") {
+      const id = editor.block.id;
+      setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, ...data } : b)));
+    } else {
+      const nextOrder = blocks.length === 0 ? 0 : Math.max(...blocks.map((b) => b.order)) + 1;
+      setBlocks((bs) => [...bs, { id: crypto.randomUUID(), order: nextOrder, ...data }]);
+    }
+    setEditor(null);
+  }
+
+  const categoriesInUse = [...new Set(blocks.map((b) => b.category).filter((c): c is string => !!c))];
+  const visibleBlocks = activeCategory ? blocks.filter((b) => b.category === activeCategory) : blocks;
 
   return (
     <>
-      <Sidebar settings={settings} onSettingsChange={updateSettings} />
+      <Sidebar
+        settings={settings}
+        onSettingsChange={updateSettings}
+        blocks={blocks}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
       <main className="main">
         <Header displayName={settings.displayName} />
-        <Board blocks={blocks} />
+        <Board
+          blocks={visibleBlocks}
+          onAddBlock={() => setEditor({ mode: "add" })}
+          onEditBlock={(block) => setEditor({ mode: "edit", block })}
+          onSwapOrder={swapOrder}
+          onSetWidth={setWidth}
+          onDeleteBlock={deleteBlock}
+          onSourceChange={updateSource}
+        />
       </main>
+      {editor && (
+        <BlockEditor
+          mode={editor.mode}
+          initial={editor.mode === "edit" ? editor.block : undefined}
+          categoriesInUse={categoriesInUse}
+          connectors={settings.connectors}
+          onSave={saveBlock}
+          onClose={() => setEditor(null)}
+        />
+      )}
     </>
   );
 }

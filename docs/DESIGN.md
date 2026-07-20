@@ -124,11 +124,16 @@ jitter in width as they update.
 - Card header: title (15px/600) on the left, block-specific meta (a
   count, a fraction like "1/2") plus the edit pencil and kebab menu on
   the right, all inline, all vertically centered.
-- `local`-sourced cards get one more header element: a plain-text
-  dropdown for `filter` (e.g. "Today ▾", "This Month ▾"), 13px
-  `--text-secondary`, positioned left of the meta count. No border, no
-  button chrome, it reads as text until clicked. `mcp`-sourced cards
-  never show this, their data isn't re-orderable client-side.
+- `local`-sourced cards get two more header elements: plain-text
+  dropdowns for `filter` and `sort` (e.g. "Today ▾", "Newest First ▾"),
+  13px `--text-secondary`, positioned left of the edit pencil and
+  kebab menu (`ARCHITECTURE.md`'s Per-block live filter section covers
+  both, not just filter). No border, no button chrome, they read as
+  text until clicked — in practice the browser's own native `<select>`
+  arrow, not a hand-rolled one, trying to fake one with CSS gradients
+  reliably produced a worse-looking glyph than just leaving border and
+  background off and letting the native arrow show. `mcp`-sourced
+  cards never show either, their data isn't re-orderable client-side.
 
 ## Row anatomy (list, progress-list, table)
 

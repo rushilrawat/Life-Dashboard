@@ -1,9 +1,11 @@
+import { Plus } from "lucide-react";
 import { resolveLocal, sampleHeatmap } from "../lib/resolveLocal";
 import type {
   Block,
   BreakdownResult,
   ChartResult,
   ListResult,
+  LocalSource,
   ProgressListResult,
   StatGridResult,
   StatResult,
@@ -57,15 +59,48 @@ function BlockBody({ block }: { block: Block }) {
   }
 }
 
-export default function Board({ blocks }: { blocks: Block[] }) {
+interface Props {
+  blocks: Block[];
+  onAddBlock: () => void;
+  onEditBlock: (block: Block) => void;
+  onSwapOrder: (idA: string, idB: string) => void;
+  onSetWidth: (id: string, width: Block["width"]) => void;
+  onDeleteBlock: (id: string) => void;
+  onSourceChange: (id: string, source: LocalSource) => void;
+}
+
+export default function Board({
+  blocks,
+  onAddBlock,
+  onEditBlock,
+  onSwapOrder,
+  onSetWidth,
+  onDeleteBlock,
+  onSourceChange,
+}: Props) {
   const sorted = [...blocks].sort((a, b) => a.order - b.order);
   return (
     <section className="board" aria-label="Board">
-      {sorted.map((block) => (
-        <BlockCard key={block.id} block={block}>
+      {sorted.map((block, i) => (
+        <BlockCard
+          key={block.id}
+          block={block}
+          onEdit={() => onEditBlock(block)}
+          onMoveUp={() => onSwapOrder(block.id, sorted[i - 1].id)}
+          onMoveDown={() => onSwapOrder(block.id, sorted[i + 1].id)}
+          canMoveUp={i > 0}
+          canMoveDown={i < sorted.length - 1}
+          onSetWidth={(width) => onSetWidth(block.id, width)}
+          onDelete={() => onDeleteBlock(block.id)}
+          onSourceChange={(source) => onSourceChange(block.id, source)}
+        >
           <BlockBody block={block} />
         </BlockCard>
       ))}
+      <button className="add-block-tile" type="button" onClick={onAddBlock}>
+        <Plus size={20} />
+        Add Block
+      </button>
     </section>
   );
 }
