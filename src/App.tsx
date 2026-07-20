@@ -1,34 +1,38 @@
 import { useEffect, useState } from "react";
-import type { SyncRequest, SyncResponse } from "./types";
+import Header from "./components/Header";
+import Sidebar from "./components/Sidebar";
+import * as storage from "./lib/storage";
+import { applyTheme } from "./styles/themes";
+import type { Settings } from "./types";
 
-// Phase 0: a blank page whose only job is proving both servers run and talk
-// to each other. On load, POST an empty SyncRequest to the backend's one
-// route and show the outcome on screen. Real UI arrives in Phase 1+.
+const defaultSettings: Settings = {
+  displayName: "Rushil",
+  themeName: "Forest",
+  themeMode: "dark",
+  connectors: [],
+};
+
 export default function App() {
-  const [status, setStatus] = useState("checking backend…");
+  const [settings, setSettings] = useState<Settings>(
+    () => storage.get("settings") ?? defaultSettings,
+  );
 
   useEffect(() => {
-    const body: SyncRequest = { connectors: [], requests: [] };
-    fetch("/api/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: SyncResponse = await res.json();
-        setStatus(`backend connected — POST /api/sync → ${JSON.stringify(data)}`);
-      })
-      .catch((err) => {
-        setStatus(`backend unreachable — ${String(err)}`);
-      });
-  }, []);
+    storage.set("settings", settings);
+    applyTheme(settings);
+  }, [settings]);
+
+  const updateSettings = (patch: Partial<Settings>) =>
+    setSettings((s) => ({ ...s, ...patch }));
 
   return (
-    <main>
-      <h1>life dashboard</h1>
-      <p>Phase 0 scaffold.</p>
-      <p>{status}</p>
-    </main>
+    <>
+      <Sidebar settings={settings} onSettingsChange={updateSettings} />
+      <main className="main">
+        <Header displayName={settings.displayName} />
+        {/* Empty until Phase 2 renders blocks into it. */}
+        <section className="board" aria-label="Board" />
+      </main>
+    </>
   );
 }

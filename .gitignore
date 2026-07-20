@@ -8,3 +8,7 @@ files.zip
 
 # generated knowledge-graph output (rebuild with /graphify)
 graphify-out/
+
+# browser-verification artifacts (Playwright MCP)
+.playwright-mcp/
+phase*.png

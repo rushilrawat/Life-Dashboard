@@ -1,0 +1,47 @@
+/* Design tokens per docs/DESIGN.md. Palette values here are Forest dark (the
+   default) so first paint matches before React mounts; themes.ts overwrites
+   every token on load and on each preset/mode change. */
+
+:root {
+  --font: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --bg: #0F1210;
+  --surface: #171B18;
+  --surface-raised: #1E2420;
+  --border: #2A2F2B;
+  --border-strong: #3A413C;
+  --text: #EDEEE9;
+  --text-secondary: #9BA39A;
+  --text-muted: #647063;
+  --accent: #3E7A5C;
+  --accent-strong: #5FA97F;
+  --accent-tint: #16241C;
+
+  /* Semantic colors, shared across presets, mode-dependent only. */
+  --success: #5FA97F;
+  --warning: #D9A441;
+  --danger: #C9564A;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+select,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
