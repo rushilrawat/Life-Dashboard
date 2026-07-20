@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.DS_Store
+
+# spec delivery archive; contents extracted to CLAUDE.md, README.md, docs/ in the first commit
+files.zip
+
+# generated knowledge-graph output (rebuild with /graphify)
+graphify-out/
