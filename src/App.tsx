@@ -5,8 +5,8 @@ import * as storage from "./lib/storage";
 import { applyTheme } from "./styles/themes";
 import type { Settings } from "./types";
 
-const defaultSettings: Settings = {
-  displayName: "Rushil",
+export const defaultSettings: Settings = {
+  displayName: "",
   themeName: "Forest",
   themeMode: "dark",
   connectors: [],

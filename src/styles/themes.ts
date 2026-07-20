@@ -71,6 +71,21 @@ const semantic = {
   light: { success: "#2E7D4F", warning: "#B8860B", danger: "#B23B2E" },
 };
 
+// customAccent replaces only --accent; --accent-strong / --accent-tint
+// re-derive from it by channel-wise RGB mixing, tuned per mode to match how
+// the shipped palettes relate accent to its variants. The percentages are
+// documented in DESIGN.md next to the palette — keep the two in sync.
+export function mix(hex: string, target: 0 | 255, t: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const channel = (shift: number) => {
+    const c = (n >> shift) & 0xff;
+    return Math.round(c + (target - c) * t)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${channel(16)}${channel(8)}${channel(0)}`;
+}
+
 const cssVar: Record<keyof PaletteTokens, string> = {
   bg: "--bg", surface: "--surface", surfaceRaised: "--surface-raised",
   border: "--border", borderStrong: "--border-strong",
@@ -94,5 +109,18 @@ export function applyTheme(settings: Settings): void {
   style.setProperty("--warning", sem.warning);
   style.setProperty("--danger", sem.danger);
   style.colorScheme = settings.themeMode;
-  // ponytail: customAccent ignored here until Phase 4 wires the accent picker
+
+  // Guard: settings come from localStorage, a malformed hex would paint
+  // garbage into every accent-derived surface.
+  const accent = settings.customAccent;
+  if (accent && /^#[0-9a-f]{6}$/i.test(accent)) {
+    style.setProperty("--accent", accent);
+    if (settings.themeMode === "dark") {
+      style.setProperty("--accent-strong", mix(accent, 255, 0.25));
+      style.setProperty("--accent-tint", mix(accent, 0, 0.7));
+    } else {
+      style.setProperty("--accent-strong", mix(accent, 0, 0.35));
+      style.setProperty("--accent-tint", mix(accent, 255, 0.85));
+    }
+  }
 }

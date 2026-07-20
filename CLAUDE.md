@@ -89,6 +89,17 @@ them back without a specific new reason, "would be nice" is not one.
 - No inline styles except values computed at runtime (derived accent
   tint/strong). Everything static comes from CSS custom properties
   defined in `src/styles/tokens.css`, per `DESIGN.md`.
+- Theme application is `applyTheme()` in `src/styles/themes.ts`: sets
+  every palette + semantic token on `document.documentElement.style`,
+  including the `customAccent` derivation documented in `DESIGN.md`.
+  Called once before first render (`main.tsx`) and again on every
+  settings change (`App.tsx`).
+- Before reporting a phase done, review this file and every file in
+  `docs/` against what was actually built. Where reality diverged, a
+  naming choice, a call the spec left open, a spec error, update the
+  doc to match, and say what changed in the phase report. Docs
+  describing a decision that isn't in the code are worse than no
+  docs.
 - Confirm with the person after each phase in `ROADMAP.md` before
   starting the next one. Do not run ahead through the whole roadmap in
   one pass.

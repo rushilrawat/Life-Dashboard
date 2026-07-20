@@ -55,10 +55,21 @@ light: bg #F7F6F3  surface #FFFFFF  surfaceRaised #EEEDE8  border #DEDDD6  borde
 ```
 
 `customAccent`, when set, replaces only the `accent` token of whatever
-preset/mode is active, `accentStrong`/`accentTint` re-derive from it
-the same way the single-accent picker worked in the prior version of
-this build. Preset switching, mode switching, and a custom accent all
-compose, nothing resets the others.
+preset/mode is active, `accentStrong`/`accentTint` re-derive from it.
+The derivation (implemented as `mix()` inside `applyTheme()`,
+`src/styles/themes.ts`) is a channel-wise RGB mix toward white or
+black, with percentages tuned per mode to match how the shipped
+palettes relate accent to its variants:
+
+```
+dark mode:  accentStrong = accent mixed 25% toward white
+            accentTint   = accent mixed 70% toward black
+light mode: accentStrong = accent mixed 35% toward black
+            accentTint   = accent mixed 85% toward white
+```
+
+Preset switching, mode switching, and a custom accent all compose,
+nothing resets the others.
 
 ## Semantic colors (shared across every preset)
 
@@ -178,7 +189,8 @@ next to a sun/moon toggle for light/dark mode, both write straight to
 
 Above the board, not inside the sidebar. Left: greeting
 ("Good evening, Rushil") in 22px/600, tagline beneath in
-`--text-secondary` 13px. Right: sync status text, Sync button
+`--text-secondary` 13px — the tagline is today's date ("Sunday,
+July 19"), derived at render like the greeting, never stored. Right: sync status text, Sync button
 (`--accent` filled, spinning refresh icon while active), gear icon for
 Settings. The greeting recomputes on every load, it's derived, never
 stored as text.
@@ -228,7 +240,8 @@ a smaller scale, not a separate visual language.
 ## Icons
 
 Outline style, one weight, from a neutral icon set (Lucide or Tabler
-outline, not filled). Never a brand logo, not for Gmail, GitHub,
+outline, not filled) — in practice `lucide-react`, the one icon
+dependency. Never a brand logo, not for Gmail, GitHub,
 Notion, or anything else, use a generic icon (mail, git-branch, book)
 or a plain monogram square in a muted tone instead. This applies
 everywhere a connector or a link might otherwise show a recognizable
