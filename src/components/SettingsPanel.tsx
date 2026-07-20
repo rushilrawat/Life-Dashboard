@@ -62,7 +62,7 @@ export default function SettingsPanel({ settings, blocks, onSettingsChange, onCl
               const uses = usageCount(c.id);
               if (confirmingId === c.id) {
                 return (
-                  <div key={c.id} className="settings-connector-row settings-connector-confirm">
+                  <div key={c.id} className="connector-row settings-connector-row settings-connector-confirm">
                     <span>
                       Used by {uses} block{uses === 1 ? "" : "s"} — remove anyway?
                     </span>
@@ -76,7 +76,7 @@ export default function SettingsPanel({ settings, blocks, onSettingsChange, onCl
                 );
               }
               return (
-                <div key={c.id} className="settings-connector-row">
+                <div key={c.id} className="connector-row settings-connector-row">
                   <Plug size={14} />
                   <div className="settings-connector-info">
                     <span className="settings-connector-name">{c.name}</span>
@@ -93,22 +93,24 @@ export default function SettingsPanel({ settings, blocks, onSettingsChange, onCl
                 </div>
               );
             })}
-            <form className="connector-add-form" onSubmit={addConnector}>
-              <input
-                className="text-input"
-                placeholder="Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <input
-                className="text-input"
-                placeholder="MCP server URL"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-              />
-              <button type="submit" className="btn-accent">
-                Add
-              </button>
+            <form className="link-add-form" onSubmit={addConnector}>
+              <div className="link-add-row">
+                <input
+                  className="text-input"
+                  placeholder="Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+                <input
+                  className="text-input"
+                  placeholder="MCP server URL"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                />
+                <button type="submit" className="btn-accent">
+                  Add
+                </button>
+              </div>
             </form>
           </section>
 

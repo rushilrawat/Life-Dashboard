@@ -374,10 +374,15 @@
   cursor: pointer;
 }
 
-.type-tile span {
+.type-tile span,
+.row-title,
+.settings-connector-url {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.type-tile span {
   max-width: 100%;
 }
 
@@ -525,9 +530,6 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .row-title.done {
@@ -895,13 +897,11 @@
 
 /* ── Settings panel ──────────────────────────────────────────────── */
 
+/* Adds a bottom divider and panel-body-flush padding on top of the shared
+   .connector-row layout (flex/align/gap/color) used in the sidebar. */
 .settings-connector-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
-  color: var(--text-secondary);
 }
 
 .settings-connector-info {
@@ -920,9 +920,6 @@
 .settings-connector-url {
   font-size: 11px;
   color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .settings-connector-confirm {
