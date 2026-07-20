@@ -51,6 +51,47 @@ Local is not a lesser fallback, it's the correct choice whenever the
 data already lives in this app. Don't route local data through an LLM
 call, that only adds latency for data that's already structured.
 
+`LocalSource` names a collection, not a block type, so one resolver
+(`src/lib/resolveLocal.ts`) shapes whichever collection into whichever
+type the block asks for. The mapping actually implemented:
+
+- `stat` from `metrics`: passthrough of the first item after
+  sort/filter (`{value: m.value, label: m.name}`) — a single Metric
+  already matches StatResult's shape. From `tasks`: a count of the
+  filtered set (`{value: "3", label: "Overdue"}`, label derived from
+  the filter name).
+- `stat-grid` from `metrics`: every item, mapped directly. From
+  `tasks`: grouped by `category`, one item per group with the count.
+- `list` / `table` from `tasks`: title/category/date map onto
+  title/subtitle/date. Leading element is a plain generic dot/icon,
+  not status-colored — `ListItem`/`TableResult` carry no per-row
+  status field to color from.
+- `progress-list` from `tasks`: title/category/date/percent map
+  directly onto the shape; the checkbox/bar rendering is always
+  accent-colored per `DESIGN.md`, never role-colored.
+- `chart` from `metrics`: one bar per metric, value parsed from the
+  metric's free-text value string (first number found, default 0 —
+  `Metric.value` is display text like "6 days" by design, so this is
+  best-effort, not a guarantee). From `tasks`: one bar per category,
+  value is the count.
+- `breakdown` from `tasks`: segments are Done/Overdue/In
+  progress/Not started counts (the roles this ring is meant to show),
+  `total` is `{value: "<done>/<total>", label: "Tasks Done"}`. See
+  `DESIGN.md`'s Ring section for how segment count changes the arc math.
+- `week` from `tasks`: intended to always pair with `filter:
+  "this-week"`; groups the filtered tasks by exact date match across
+  the 7 fixed days.
+- `heatmap` has no local mapping yet — every heatmap block, local or
+  mcp source alike, renders `sampleHeatmap()`'s fixed sample grid this
+  phase. `ROADMAP.md`'s Phase 2 entry sanctions this explicitly ("won't
+  have anything real to show until a connector exists in Phase 5").
+
+Not every (type, collection) pair is meaningful — a `date-asc` sort
+against `metrics`, for instance, is a no-op, since `Metric` has no date
+field. The resolver degrades safely (returns the input unsorted, or
+`null` for an unhandled pairing, which the card renders as its empty
+state) rather than guessing at semantics that don't exist.
+
 ### `mcp`
 
 Reads from one or more connected tools via a plain-language query,

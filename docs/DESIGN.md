@@ -212,6 +212,17 @@ for anything else shaped like a whole and its parts. Don't build a
 separate component per use case, task-progress and habit-score are the
 same `breakdown` block with different data.
 
+`BreakdownResult` has no `max`/denominator field, so the ring needs a
+convention for how full to draw it, given only segment values: **one
+segment** (the habit-score case) draws its value as a 0-100 percentage
+of the circle directly, remainder left as empty `--border` track — a
+lone segment has nothing to be proportional *to*, so it's read as a
+percentage. **Two or more segments** (the task-progress case) draw
+proportional to each other, summing to the full circle with no
+remainder track, since together they already account for the whole.
+**Zero segments** draws an empty track, just the total number, no
+arc.
+
 **Bar chart**: simple vertical bars, `--accent` fill, day-of-week
 labels beneath in `--text-muted`, no axis lines, no gridlines, the
 bars carry the whole chart.

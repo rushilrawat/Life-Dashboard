@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Board from "./components/Board";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import * as storage from "./lib/storage";
@@ -16,6 +17,7 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(
     () => storage.get("settings") ?? defaultSettings,
   );
+  const [blocks] = useState(() => storage.get("blocks") ?? []);
 
   useEffect(() => {
     storage.set("settings", settings);
@@ -30,8 +32,7 @@ export default function App() {
       <Sidebar settings={settings} onSettingsChange={updateSettings} />
       <main className="main">
         <Header displayName={settings.displayName} />
-        {/* Empty until Phase 2 renders blocks into it. */}
-        <section className="board" aria-label="Board" />
+        <Board blocks={blocks} />
       </main>
     </>
   );

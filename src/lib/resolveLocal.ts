@@ -1,0 +1,225 @@
+import * as storage from "./storage";
+import type {
+  Block,
+  LocalSource,
+  Metric,
+  Task,
+  StatResult,
+  StatGridResult,
+  ListResult,
+  ProgressListResult,
+  TableResult,
+  ChartResult,
+  BreakdownResult,
+  HeatmapResult,
+  WeekResult,
+} from "../types";
+
+// The one local-source resolver (ARCHITECTURE.md): every local block goes
+// through this, no per-block bespoke storage reads. Given a block's own
+// type, it shapes tasks/metrics into that type's result, per DATA_MODEL.md.
+// heatmap is deliberately absent — see sampleHeatmap() below.
+
+export type LocalResult =
+  | StatResult
+  | StatGridResult
+  | ListResult
+  | ProgressListResult
+  | TableResult
+  | ChartResult
+  | BreakdownResult
+  | WeekResult;
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+function addDays(iso: string, n: number): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// A task's status, used only for breakdown segments — the one place
+// success/warning/danger legitimately appear together (DESIGN.md).
+function taskStatus(t: Task): "done" | "overdue" | "in-progress" | "not-started" {
+  if (t.percent === 100) return "done";
+  const d = today();
+  if (t.date < d) return "overdue";
+  if (t.percent > 0) return "in-progress";
+  return "not-started";
+}
+
+function filterTasks(tasks: Task[], filter: LocalSource["filter"]): Task[] {
+  const d = today();
+  switch (filter) {
+    case "today":
+      return tasks.filter((t) => t.date === d);
+    case "this-week":
+      return tasks.filter((t) => t.date >= d && t.date <= addDays(d, 6));
+    case "overdue":
+      return tasks.filter((t) => t.date < d && t.percent < 100);
+    case "in-progress":
+      return tasks.filter((t) => t.percent > 0 && t.percent < 100);
+    case "done":
+      return tasks.filter((t) => t.percent === 100);
+    case "all":
+      return tasks;
+  }
+}
+
+function sortTasks(tasks: Task[], sort: LocalSource["sort"]): Task[] {
+  const copy = [...tasks];
+  switch (sort) {
+    case "date-asc":
+      return copy.sort((a, b) => a.date.localeCompare(b.date));
+    case "date-desc":
+      return copy.sort((a, b) => b.date.localeCompare(a.date));
+    case "percent-asc":
+      return copy.sort((a, b) => a.percent - b.percent);
+    case "percent-desc":
+      return copy.sort((a, b) => b.percent - a.percent);
+    case "name":
+      return copy.sort((a, b) => a.title.localeCompare(b.title));
+  }
+}
+
+// ponytail: metrics have no date/percent field, so only a "name" sort
+// applies to them; a date/percent sort request against metrics is a no-op.
+function sortMetrics(metrics: Metric[], sort: LocalSource["sort"]): Metric[] {
+  return sort === "name"
+    ? [...metrics].sort((a, b) => a.name.localeCompare(b.name))
+    : metrics;
+}
+
+const FILTER_LABEL: Record<LocalSource["filter"], string> = {
+  all: "Tasks",
+  today: "Due Today",
+  "this-week": "Due This Week",
+  overdue: "Overdue",
+  "in-progress": "In Progress",
+  done: "Done",
+};
+
+function groupByCategory(tasks: Task[]): Record<string, Task[]> {
+  const groups: Record<string, Task[]> = {};
+  for (const t of tasks) {
+    const key = t.category || "Uncategorized";
+    (groups[key] ??= []).push(t);
+  }
+  return groups;
+}
+
+// ponytail: Metric.value is free text ("6 days", "98%") by design (DATA_MODEL.md),
+// so charting it is inherently best-effort — pull the first number out, default 0.
+function parseFirstNumber(s: string): number {
+  const m = s.match(/-?\d+(\.\d+)?/);
+  return m ? parseFloat(m[0]) : 0;
+}
+
+function buildWeek(tasks: Task[]): WeekResult {
+  const start = today();
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(start, i);
+    const dayTasks = tasks.filter((t) => t.date === date);
+    return { date, entries: dayTasks.map((t) => ({ title: t.title, tag: t.category })) };
+  });
+  return { days };
+}
+
+function shapeFromTasks(
+  type: Block["type"],
+  tasks: Task[],
+  filter: LocalSource["filter"],
+): LocalResult | null {
+  switch (type) {
+    case "stat":
+      return { value: String(tasks.length), label: FILTER_LABEL[filter] };
+    case "stat-grid": {
+      const groups = groupByCategory(tasks);
+      return { items: Object.entries(groups).map(([label, ts]) => ({ value: String(ts.length), label })) };
+    }
+    case "list":
+      return { items: tasks.map((t) => ({ title: t.title, subtitle: t.category, date: t.date })) };
+    case "progress-list":
+      return {
+        items: tasks.map((t) => ({ title: t.title, subtitle: t.category, date: t.date, percent: t.percent })),
+      };
+    case "table":
+      return {
+        columns: ["Title", "Category", "Date", "Percent"],
+        rows: tasks.map((t) => [t.title, t.category, t.date, `${t.percent}%`]),
+      };
+    case "chart": {
+      const groups = groupByCategory(tasks);
+      return { points: Object.entries(groups).map(([label, ts]) => ({ label, value: ts.length })) };
+    }
+    case "breakdown": {
+      const buckets: Record<string, { count: number; role?: "success" | "warning" | "danger" }> = {
+        Done: { count: 0, role: "success" },
+        Overdue: { count: 0, role: "danger" },
+        "In progress": { count: 0, role: "warning" },
+        "Not started": { count: 0 },
+      };
+      const label: Record<ReturnType<typeof taskStatus>, string> = {
+        done: "Done",
+        overdue: "Overdue",
+        "in-progress": "In progress",
+        "not-started": "Not started",
+      };
+      for (const t of tasks) buckets[label[taskStatus(t)]].count++;
+      const done = buckets.Done.count;
+      return {
+        total: { value: `${done}/${tasks.length}`, label: "Tasks Done" },
+        segments: Object.entries(buckets)
+          .filter(([, b]) => b.count > 0)
+          .map(([label, b]) => ({ label, value: b.count, role: b.role })),
+      };
+    }
+    case "week":
+      return buildWeek(tasks);
+    default:
+      return null;
+  }
+}
+
+function shapeFromMetrics(type: Block["type"], metrics: Metric[]): LocalResult | null {
+  switch (type) {
+    case "stat": {
+      const m = metrics[0];
+      return m ? { value: m.value, label: m.name } : { value: "—", label: "No data" };
+    }
+    case "stat-grid":
+      return { items: metrics.map((m) => ({ value: m.value, label: m.name })) };
+    case "chart":
+      return { points: metrics.map((m) => ({ label: m.name, value: parseFirstNumber(m.value) })) };
+    case "list":
+      return { items: metrics.map((m) => ({ title: m.name, subtitle: m.value })) };
+    default:
+      return null;
+  }
+}
+
+export function resolveLocal(block: Block): LocalResult | null {
+  if (!block.source || block.source.kind !== "local") return null;
+  const { collection, sort, filter } = block.source;
+
+  if (collection === "tasks") {
+    const tasks = sortTasks(filterTasks(storage.get("tasks") ?? [], filter), sort);
+    return shapeFromTasks(block.type, tasks, filter);
+  }
+  const metrics = sortMetrics(storage.get("metrics") ?? [], sort);
+  return shapeFromMetrics(block.type, metrics);
+}
+
+// heatmap has no real local data shape yet (no day-by-day collection exists
+// in storage) — ROADMAP.md's Phase 2 entry explicitly sanctions fake data
+// here until a connector exists in Phase 5. Deterministic, not random, so it
+// doesn't flicker on every render.
+export function sampleHeatmap(): HeatmapResult {
+  const start = today();
+  const days = Array.from({ length: 84 }, (_, i) => {
+    const date = addDays(start, i - 83);
+    const hash = Array.from(date).reduce((a, c) => a + c.charCodeAt(0), 0);
+    return { date, value: hash % 5 };
+  });
+  return { days };
+}

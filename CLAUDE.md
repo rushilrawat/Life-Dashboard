@@ -83,7 +83,16 @@ them back without a specific new reason, "would be nice" is not one.
 ## Conventions
 
 - Component files match the block type they render:
-  `StatBlock.tsx`, `ListBlock.tsx`, etc.
+  `StatBlock.tsx`, `ListBlock.tsx`, etc., living in
+  `src/components/blocks/`. `BlockCard.tsx` (the shared card shell) and
+  `Board.tsx` (resolves each block's data and dispatches to its type)
+  live one level up in `src/components/`, since neither is itself a
+  block type.
+- The one local-source resolver is `resolveLocal()` in
+  `src/lib/resolveLocal.ts` — every local-sourced block's data goes
+  through it, no per-block bespoke storage reads. First-run sample
+  data lives in `src/lib/seed.ts` (`seedIfEmpty()`, called once from
+  `main.tsx`, writes only keys that are still empty).
 - Types live in `src/types.ts`, mirror `DATA_MODEL.md` exactly, if the
   doc and the code drift, fix the code.
 - No inline styles except values computed at runtime (derived accent
