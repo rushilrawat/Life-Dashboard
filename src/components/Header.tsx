@@ -9,7 +9,15 @@ function greeting(name: string): string {
   return name ? `${phrase}, ${name}` : phrase;
 }
 
-export default function Header({ displayName, onOpenSettings }: { displayName: string; onOpenSettings: () => void }) {
+interface Props {
+  displayName: string;
+  onOpenSettings: () => void;
+  syncing: boolean;
+  syncStatus: string;
+  onSync: () => void;
+}
+
+export default function Header({ displayName, onOpenSettings, syncing, syncStatus, onSync }: Props) {
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
@@ -23,10 +31,9 @@ export default function Header({ displayName, onOpenSettings }: { displayName: s
         <p className="tagline">{today}</p>
       </div>
       <div className="header-right">
-        <span className="sync-status">Not synced yet</span>
-        {/* Sync is an inert shell until Phase 5 wires the backend proxy. */}
-        <button className="sync-btn" type="button">
-          <RefreshCw size={14} />
+        <span className="sync-status">{syncStatus}</span>
+        <button className="sync-btn" type="button" disabled={syncing} onClick={onSync}>
+          <RefreshCw size={14} className={syncing ? "spin" : undefined} />
           Sync
         </button>
         <button className="icon-btn" type="button" aria-label="Settings" onClick={onOpenSettings}>

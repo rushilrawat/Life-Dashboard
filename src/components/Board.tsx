@@ -1,9 +1,12 @@
 import { Plus } from "lucide-react";
-import { resolveLocal, sampleHeatmap } from "../lib/resolveLocal";
+import { resolveLocal } from "../lib/resolveLocal";
+import * as storage from "../lib/storage";
 import type {
   Block,
+  BlockResult,
   BreakdownResult,
   ChartResult,
+  HeatmapResult,
   ListResult,
   LocalSource,
   ProgressListResult,
@@ -25,21 +28,11 @@ import TableBlock from "./blocks/TableBlock";
 import TextBlock from "./blocks/TextBlock";
 import WeekBlock from "./blocks/WeekBlock";
 
-// The block component never knows where its data came from (ARCHITECTURE.md)
-// — this is the one place that resolves a block's source and dispatches to
-// its type's renderer.
-function BlockBody({ block }: { block: Block }) {
-  if (block.type === "text") return <TextBlock blockId={block.id} />;
-  if (block.type === "links") return <LinksBlock blockId={block.id} width={block.width} />;
-  // ponytail: heatmap always shows fake data this phase, regardless of its
-  // source — see resolveLocal.ts's sampleHeatmap() comment. Real sync-cache
-  // lookup replaces this in Phase 5.
-  if (block.type === "heatmap") return <HeatmapBlock result={sampleHeatmap()} />;
-
-  const result = resolveLocal(block);
-  if (!result) return <EmptyState message="Source not configured" />;
-
-  switch (block.type) {
+// Dispatch by type only — same result shapes whether they came from
+// resolveLocal() or a sync-cache entry (ARCHITECTURE.md: the block
+// component never knows where its data came from).
+function renderResult(type: Block["type"], result: BlockResult) {
+  switch (type) {
     case "stat":
       return <StatBlock result={result as StatResult} />;
     case "stat-grid":
@@ -56,7 +49,28 @@ function BlockBody({ block }: { block: Block }) {
       return <BreakdownBlock result={result as BreakdownResult} />;
     case "week":
       return <WeekBlock result={result as WeekResult} />;
+    case "heatmap":
+      return <HeatmapBlock result={result as HeatmapResult} />;
+    default:
+      return null;
   }
+}
+
+// The one place that resolves a block's source and dispatches to its
+// type's renderer.
+function BlockBody({ block }: { block: Block }) {
+  if (block.type === "text") return <TextBlock blockId={block.id} />;
+  if (block.type === "links") return <LinksBlock blockId={block.id} width={block.width} />;
+
+  if (block.source?.kind === "api") {
+    const cached = storage.get(`sync-cache:${block.id}`);
+    if (!cached) return <EmptyState message="Not synced yet" />;
+    return renderResult(block.type, cached.result);
+  }
+
+  const result = resolveLocal(block);
+  if (!result) return <EmptyState message="Source not configured" />;
+  return renderResult(block.type, result);
 }
 
 interface Props {

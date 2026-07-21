@@ -22,8 +22,8 @@ interface LocalSource {
 
 interface ApiSource {
   kind: "api";
-  connectorId: string;      // resolves against Settings.connectors, gives the service
-  capability: string;       // matches a Capability.id the connector's service adapter declares
+  connectorId: string;
+  capability: string;         // matches a Capability.id the connector's adapter declares
   params?: Record<string, string>;   // e.g. { username: "rushil" } for GitHub's commit-heatmap
 }
 
@@ -46,8 +46,8 @@ just two entry points.
 
 ## Shapes returned per block type
 
-What a `local` resolver or an `api` sync response must produce, keyed by
-block ID for `api`, computed directly for `local`.
+What a `local` resolver or an `api` adapter capability must produce,
+keyed by block ID for `api`, computed directly for `local`.
 
 ```ts
 type StatResult = { value: string; label: string };
@@ -81,10 +81,6 @@ type WeekResult = {
     entries: { title: string; time?: string; tag?: string }[];
   }[];                                          // always exactly 7, today through today+6
 };
-
-type BlockResult =
-  | StatResult | StatGridResult | ListResult | ProgressListResult
-  | TableResult | ChartResult | BreakdownResult | HeatmapResult | WeekResult;
 ```
 
 `heatmap` is the day-by-day intensity grid, coding activity via a
@@ -109,55 +105,30 @@ a special one.
 
 ## Connector
 
-A connector represents a credential, not a credential-plus-one-query: no
-params, no secret. The one real credential per service (e.g.
-`GITHUB_TOKEN`) lives once in the backend's `.env`, never in a connector
-instance — what to actually fetch lives on each block's `ApiSource`
-instead. Adding a new service is one more union member plus one adapter
-in `server/adapters/`, not a shape change.
-
 ```ts
-type Connector = {
+type SupportedService = "github";   // grows as adapters get built
+
+interface ApiConnector {
   id: string;
-  name: string;
-  service: "github";
-};
+  service: SupportedService;
+  label: string;          // user-editable display name, e.g. "GitHub (personal)"
+}
 
-type ConnectorService = Connector["service"];
-
-const SERVICE_LABELS: Record<ConnectorService, string> = {
-  github: "GitHub",
-};
-
-// A named, adapter-declared operation: what it returns (resultShape)
-// and what params it needs. Mirrors each adapter's own capability list
-// in server/adapters/ — the block editor's capability dropdown reads
-// from this, filtered to capabilities whose resultShape matches the
-// block being configured, so an unsupported pairing is never selectable.
-type Capability = {
-  id: string;
-  label: string;
-  resultShape: BlockType;
+interface Capability {
+  id: string;              // e.g. "commit-heatmap"
+  label: string;           // e.g. "Commit heatmap"
+  resultShape: BlockType;   // which of the eleven shapes this capability returns
   params: { key: string; label: string; type: "text" | "number" }[];
-};
-
-const CAPABILITIES: Record<ConnectorService, Capability[]> = {
-  github: [
-    {
-      id: "commit-heatmap",
-      label: "Commit heatmap",
-      resultShape: "heatmap",
-      params: [{ key: "username", label: "GitHub username", type: "text" }],
-    },
-    {
-      id: "recent-commits",
-      label: "Recent commits",
-      resultShape: "list",
-      params: [{ key: "username", label: "GitHub username", type: "text" }],
-    },
-  ],
-};
+}
 ```
+
+`Capability[]` isn't stored anywhere, each adapter module exports its
+own list as a static const, that's what the block editor's capability
+dropdown reads from once a connector's `service` is known. GitHub's
+adapter, as actually built, exports at least `recent-commits`
+(`list`) and `commit-heatmap` (`heatmap`), each taking a `username`
+param.
+
 
 ## Task (local collection)
 
@@ -230,7 +201,7 @@ interface Settings {
   themeName: string;            // matches a ThemePreset.name
   themeMode: "light" | "dark";
   customAccent?: string;        // hex, overrides just the accent token of the active preset/mode
-  connectors: Connector[];
+  connectors: ApiConnector[];
 }
 ```
 
@@ -249,7 +220,7 @@ a named preset instead of standing alone.
 interface SyncCacheEntry {
   blockId: string;
   syncedAt: string;      // ISO timestamp
-  result: BlockResult;
+  result: StatResult | StatGridResult | ListResult | ProgressListResult | TableResult | ChartResult | BreakdownResult | HeatmapResult | WeekResult;
   stale: boolean;         // true if last sync attempt failed to return this block
 }
 ```
@@ -270,15 +241,7 @@ Wrap all reads/writes in one small typed module
 (`src/lib/storage.ts`), don't call `localStorage` directly from
 components.
 
-## Sync request/response (frontend to backend proxy)
-
-Each request carries the connector's `service` directly — the backend
-has no database to resolve `connectorId -> service` on its own, and the
-frontend already has `Settings.connectors` in memory, so it resolves
-this once and sends it along. No dedupe, no batching beyond one HTTP
-call covering every block: every request is an independent, cheap,
-direct call to that service's own API (no LLM in the loop), so the
-backend just fans them out in parallel.
+## Sync request/response (frontend to backend)
 
 Request:
 ```ts
@@ -286,7 +249,6 @@ interface SyncRequest {
   requests: {
     blockId: string;
     connectorId: string;
-    service: ConnectorService;
     capability: string;
     params?: Record<string, string>;
   }[];
@@ -296,7 +258,12 @@ interface SyncRequest {
 Response:
 ```ts
 interface SyncResponse {
-  results: Record<string, BlockResult>;
+  results: Record<string, StatResult | StatGridResult | ListResult | ProgressListResult | TableResult | ChartResult | BreakdownResult | HeatmapResult | WeekResult>;
   failed: string[];      // block IDs that didn't come back, render stale instead of blank
 }
 ```
+
+No `mcp_servers`, no prompt, no dedupe step, the backend looks up each
+`connectorId`'s `service`, calls that adapter's `capability` function
+with `params`, and that's the whole resolution, per block, in
+parallel.

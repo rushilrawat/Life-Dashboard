@@ -1,8 +1,9 @@
 import { Plug, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type React from "react";
 import { themePresets } from "../styles/themes";
-import type { Block, Connector, Settings } from "../types";
+import type { Block, Connector, ConnectorService, Settings } from "../types";
+import { SERVICE_LABELS } from "../types";
 
 interface Props {
   settings: Settings;
@@ -17,8 +18,20 @@ interface Props {
 // this is the only panel precedent the app has.
 export default function SettingsPanel({ settings, blocks, onSettingsChange, onClose }: Props) {
   const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
+  const [service, setService] = useState<ConnectorService>("github");
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  // Connected/missing per service, checked against the backend's env vars
+  // (GET /api/connectors/status) — never exposes the credential itself.
+  const [status, setStatus] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const services = [...new Set(settings.connectors.map((c) => c.service))];
+    if (services.length === 0) return;
+    fetch(`/api/connectors/status?services=${services.join(",")}`)
+      .then((res) => res.json())
+      .then(setStatus)
+      .catch(() => {});
+  }, [settings.connectors]);
 
   const dark = settings.themeMode === "dark";
   const preset = themePresets.find((p) => p.name === settings.themeName) ?? themePresets[0];
@@ -26,11 +39,10 @@ export default function SettingsPanel({ settings, blocks, onSettingsChange, onCl
 
   function addConnector(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !url.trim()) return;
-    const connector: Connector = { id: crypto.randomUUID(), name: name.trim(), url: url.trim() };
+    if (!name.trim()) return;
+    const connector: Connector = { id: crypto.randomUUID(), name: name.trim(), service };
     onSettingsChange({ connectors: [...settings.connectors, connector] });
     setName("");
-    setUrl("");
   }
 
   function removeConnector(id: string) {
@@ -41,7 +53,7 @@ export default function SettingsPanel({ settings, blocks, onSettingsChange, onCl
   // ARCHITECTURE.md: deleting a connector should warn if blocks still
   // reference it, not silently break them.
   function usageCount(id: string): number {
-    return blocks.filter((b) => b.source?.kind === "mcp" && b.source.connectorIds.includes(id)).length;
+    return blocks.filter((b) => b.source?.kind === "api" && b.source.connectorId === id).length;
   }
 
   return (
@@ -75,13 +87,18 @@ export default function SettingsPanel({ settings, blocks, onSettingsChange, onCl
                   </div>
                 );
               }
+              const connected = status[c.service];
               return (
                 <div key={c.id} className="connector-row settings-connector-row">
                   <Plug size={14} />
                   <div className="settings-connector-info">
                     <span className="settings-connector-name">{c.name}</span>
-                    <span className="settings-connector-url">{c.url}</span>
+                    <span className="settings-connector-url">{SERVICE_LABELS[c.service]}</span>
                   </div>
+                  <span className={`connector-status${connected ? " connector-status--connected" : ""}`}>
+                    <span className="connector-status-dot" />
+                    {connected ? "Connected" : "Missing token"}
+                  </span>
                   <button
                     type="button"
                     className="icon-btn"
@@ -101,12 +118,13 @@ export default function SettingsPanel({ settings, blocks, onSettingsChange, onCl
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
-                <input
-                  className="text-input"
-                  placeholder="MCP server URL"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                />
+                <select value={service} onChange={(e) => setService(e.target.value as ConnectorService)}>
+                  {Object.entries(SERVICE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
                 <button type="submit" className="btn-accent">
                   Add
                 </button>

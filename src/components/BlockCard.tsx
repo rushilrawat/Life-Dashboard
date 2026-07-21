@@ -2,7 +2,15 @@ import { ArrowDown, ArrowUp, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { FILTER_OPTIONS, SORT_OPTIONS } from "../lib/localSourceOptions";
+import * as storage from "../lib/storage";
 import type { Block, LocalSource } from "../types";
+
+function timeAgo(iso: string): string {
+  const hours = Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000);
+  if (hours < 1) return "just now";
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
 
 interface Props {
   block: Block;
@@ -82,12 +90,19 @@ export default function BlockCard({
   onSourceChange,
 }: Props) {
   const local = block.source?.kind === "local" ? block.source : null;
+  const syncCache = block.source?.kind === "api" ? storage.get(`sync-cache:${block.id}`) : null;
 
   return (
     <div className={`card card--${block.width}`}>
       <div className="card-header">
         <h2 className="card-title">{block.title}</h2>
         <div className="card-header-right">
+          {syncCache?.stale && (
+            <span className="stale-indicator" title="Last sync attempt failed for this block">
+              <span className="stale-dot" />
+              last synced {timeAgo(syncCache.syncedAt)}
+            </span>
+          )}
           {local && (
             <>
               <select

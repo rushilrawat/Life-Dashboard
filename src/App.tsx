@@ -6,6 +6,7 @@ import Header from "./components/Header";
 import SettingsPanel from "./components/SettingsPanel";
 import Sidebar from "./components/Sidebar";
 import * as storage from "./lib/storage";
+import { buildSyncRequests, applySyncResponse } from "./lib/sync";
 import { applyTheme } from "./styles/themes";
 import type { Block, LocalSource, Settings } from "./types";
 
@@ -26,6 +27,8 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("Not synced yet");
 
   useEffect(() => {
     storage.set("settings", settings);
@@ -64,6 +67,37 @@ export default function App() {
     setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, source } : b)));
   }
 
+  async function handleSync() {
+    const { request, immediateFailures } = buildSyncRequests(blocks, settings.connectors);
+    if (request.requests.length === 0 && immediateFailures.length === 0) {
+      setSyncStatus("Nothing to sync");
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const response =
+        request.requests.length > 0
+          ? await fetch("/api/sync", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(request),
+            }).then((res) => {
+              if (!res.ok) throw new Error(`Sync failed: ${res.status}`);
+              return res.json();
+            })
+          : { results: {}, failed: [] };
+
+      applySyncResponse(response, immediateFailures);
+      const failedCount = response.failed.length + immediateFailures.length;
+      setSyncStatus(failedCount > 0 ? `Synced — ${failedCount} block${failedCount === 1 ? "" : "s"} failed` : "Synced just now");
+    } catch {
+      setSyncStatus("Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   function saveBlock(data: BlockFormData) {
     if (editor?.mode === "edit") {
       const id = editor.block.id;
@@ -89,7 +123,13 @@ export default function App() {
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <main className="main">
-        <Header displayName={settings.displayName} onOpenSettings={() => setSettingsOpen(true)} />
+        <Header
+          displayName={settings.displayName}
+          onOpenSettings={() => setSettingsOpen(true)}
+          syncing={syncing}
+          syncStatus={syncStatus}
+          onSync={handleSync}
+        />
         <Board
           blocks={visibleBlocks}
           onAddBlock={() => setEditor({ mode: "add" })}

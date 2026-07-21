@@ -44,7 +44,7 @@ const blocks: Block[] = [
   { id: "b-breakdown", type: "breakdown", title: "Task Breakdown", width: "half", order: 6,
     source: { kind: "local", collection: "tasks", sort: "date-asc", filter: "all" } },
   { id: "b-heatmap", type: "heatmap", title: "Activity", width: "full", order: 7,
-    source: { kind: "mcp", connectorIds: [], query: "daily commit counts for the last 12 weeks" } },
+    source: { kind: "api", connectorId: "", capability: "commit-heatmap" } },
   { id: "b-week", type: "week", title: "This Week", width: "full", order: 8,
     category: "Tasks",
     source: { kind: "local", collection: "tasks", sort: "date-asc", filter: "this-week" } },

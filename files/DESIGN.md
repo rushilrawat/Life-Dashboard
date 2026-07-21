@@ -55,21 +55,10 @@ light: bg #F7F6F3  surface #FFFFFF  surfaceRaised #EEEDE8  border #DEDDD6  borde
 ```
 
 `customAccent`, when set, replaces only the `accent` token of whatever
-preset/mode is active, `accentStrong`/`accentTint` re-derive from it.
-The derivation (implemented as `mix()` inside `applyTheme()`,
-`src/styles/themes.ts`) is a channel-wise RGB mix toward white or
-black, with percentages tuned per mode to match how the shipped
-palettes relate accent to its variants:
-
-```
-dark mode:  accentStrong = accent mixed 25% toward white
-            accentTint   = accent mixed 70% toward black
-light mode: accentStrong = accent mixed 35% toward black
-            accentTint   = accent mixed 85% toward white
-```
-
-Preset switching, mode switching, and a custom accent all compose,
-nothing resets the others.
+preset/mode is active, `accentStrong`/`accentTint` re-derive from it
+the same way the single-accent picker worked in the prior version of
+this build. Preset switching, mode switching, and a custom accent all
+compose, nothing resets the others.
 
 ## Semantic colors (shared across every preset)
 
@@ -124,16 +113,11 @@ jitter in width as they update.
 - Card header: title (15px/600) on the left, block-specific meta (a
   count, a fraction like "1/2") plus the edit pencil and kebab menu on
   the right, all inline, all vertically centered.
-- `local`-sourced cards get two more header elements: plain-text
-  dropdowns for `filter` and `sort` (e.g. "Today ▾", "Newest First ▾"),
-  13px `--text-secondary`, positioned left of the edit pencil and
-  kebab menu (`ARCHITECTURE.md`'s Per-block live filter section covers
-  both, not just filter). No border, no button chrome, they read as
-  text until clicked — in practice the browser's own native `<select>`
-  arrow, not a hand-rolled one, trying to fake one with CSS gradients
-  reliably produced a worse-looking glyph than just leaving border and
-  background off and letting the native arrow show. `api`-sourced
-  cards never show either, their data isn't re-orderable client-side.
+- `local`-sourced cards get one more header element: a plain-text
+  dropdown for `filter` (e.g. "Today ▾", "This Month ▾"), 13px
+  `--text-secondary`, positioned left of the meta count. No border, no
+  button chrome, it reads as text until clicked. `api`-sourced cards
+  never show this, their data isn't re-orderable client-side.
 
 ## Row anatomy (list, progress-list, table)
 
@@ -183,10 +167,9 @@ optional, active one gets `--accent-tint` background and `--accent`
 left border (2px, the one exception to the single-hairline rule,
 reserved for the active nav state). Below the nav, a "Connectors"
 section: small caps label, then one row per connector (generic icon
-per `## Icons` below, name only, the service label and connected/
-missing status stay in Settings), then an "Add connector" row in
-`--text-muted` with a plus icon that opens the same add form Settings
-uses. Bottom of the
+per `## Icons` below, name, no URL shown here, that detail stays in
+Settings), then an "Add connector" row in `--text-muted` with a plus
+icon that opens the same add form Settings uses. Bottom of the
 sidebar: theme switcher, a small preset-name dropdown ("Forest ▾")
 next to a sun/moon toggle for light/dark mode, both write straight to
 `Settings` and repaint immediately.
@@ -195,8 +178,7 @@ next to a sun/moon toggle for light/dark mode, both write straight to
 
 Above the board, not inside the sidebar. Left: greeting
 ("Good evening, Rushil") in 22px/600, tagline beneath in
-`--text-secondary` 13px — the tagline is today's date ("Sunday,
-July 19"), derived at render like the greeting, never stored. Right: sync status text, Sync button
+`--text-secondary` 13px. Right: sync status text, Sync button
 (`--accent` filled, spinning refresh icon while active), gear icon for
 Settings. The greeting recomputes on every load, it's derived, never
 stored as text.
@@ -217,17 +199,6 @@ segment, no breakdown rows needed, just the ring and the number), and
 for anything else shaped like a whole and its parts. Don't build a
 separate component per use case, task-progress and habit-score are the
 same `breakdown` block with different data.
-
-`BreakdownResult` has no `max`/denominator field, so the ring needs a
-convention for how full to draw it, given only segment values: **one
-segment** (the habit-score case) draws its value as a 0-100 percentage
-of the circle directly, remainder left as empty `--border` track — a
-lone segment has nothing to be proportional *to*, so it's read as a
-percentage. **Two or more segments** (the task-progress case) draw
-proportional to each other, summing to the full circle with no
-remainder track, since together they already account for the whole.
-**Zero segments** draws an empty track, just the total number, no
-arc.
 
 **Bar chart**: simple vertical bars, `--accent` fill, day-of-week
 labels beneath in `--text-muted`, no axis lines, no gridlines, the
@@ -257,8 +228,7 @@ a smaller scale, not a separate visual language.
 ## Icons
 
 Outline style, one weight, from a neutral icon set (Lucide or Tabler
-outline, not filled) — in practice `lucide-react`, the one icon
-dependency. Never a brand logo, not for Gmail, GitHub,
+outline, not filled). Never a brand logo, not for Gmail, GitHub,
 Notion, or anything else, use a generic icon (mail, git-branch, book)
 or a plain monogram square in a muted tone instead. This applies
 everywhere a connector or a link might otherwise show a recognizable
@@ -294,44 +264,13 @@ label ("1. Choose block type", "2. Data source", "3. Block settings").
 Block type picker is a 4-column icon grid (eleven tiles, three rows,
 last row partial), each tile `--surface`/`--border` default,
 `--accent-tint` background with `--accent` border when selected. The
-Local/Connected-service toggle is a two-segment control, same selected
-treatment. When Connected service is active: a connector dropdown, then
-a capability dropdown that populates once a connector's chosen (empty
-and disabled until then, filtered to capabilities matching the block's
-type), then that capability's param fields render below as plain
-labeled text inputs, one row each, no more than two or three params in
-practice given what GitHub's adapter needs. Footer: Cancel (ghost) and
-Add Block / Save (filled `--accent`), right-aligned.
-
-## Settings panel
-
-Not separately specified before now — this doc never described one, only
-`ARCHITECTURE.md`'s two-section content list existed. It reuses the
-Add/Edit Block panel's exact treatment (slide-in from the right,
-`--surface-raised`, `--border-strong` left edge, numbered-label
-sections), the only panel precedent this app has, rather than
-inventing a second modal language for one more panel.
-
-**Connectors**: each row is icon + name + service label
-(`--text-muted`, small) + a connected/missing status dot (`--success`
-or `--warning`, checked live against `GET /api/connectors/status`) + a
-trash icon, `1px solid var(--border)` beneath each row. No url, no
-per-connector params — those live on whichever blocks use the
-connector, not here. Removing a connector still referenced by a block
-doesn't pop a native
-`confirm()` — nothing else in this app uses a browser-native dialog,
-and one would break the fully custom-styled feel everywhere else. The
-row instead swaps in place for an inline warning ("Used by N blocks —
-remove anyway?") with Cancel / Remove, same pattern spirit as
-everything else here staying in-system rather than reaching for a
-platform default.
-
-**Theme**: preset dropdown and a Light/Dark segmented control (same
-`.segmented` treatment as the Add/Edit panel's Local/Connected-service toggle),
-plus a native `<input type="color">` for the custom accent override —
-no custom color-picker component, the platform picker already does
-this well. A "Reset to preset" text button appears only once a custom
-accent is actually set.
+Local/Connected app toggle is a two-segment control, same selected
+treatment. When Connected app is active: a connector dropdown, then a
+capability dropdown that populates once a connector's chosen (empty
+and disabled until then), then that capability's param fields render
+below as plain labeled text inputs, one row each, no more than two or
+three params in practice given what GitHub's adapter needs. Footer:
+Cancel (ghost) and Add Block / Save (filled `--accent`), right-aligned.
 
 ## States
 

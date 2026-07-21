@@ -4,15 +4,28 @@
 
 A block is a container with a type (how it displays) and a source (where
 its data comes from). Type and source are fully independent. A `list`
-block can source from local tasks or from a GitHub connector. A `chart`
-block can source from local metrics or from a Slack connector's message
-volume. The block component never knows or cares where its data came
-from, it only knows the shape it was handed.
+block can source from local tasks or from a connected service. A
+`heatmap` block can source from local data (once something local is
+day-by-day) or from a GitHub connector's contribution calendar. The
+block component never knows or cares where its data came from, it only
+knows the shape it was handed.
 
-This is what makes "connect any block to anything" true without writing
-a parser per integration: the shape contract is fixed (eleven shapes,
-see `DATA_MODEL.md`), and an LLM call is the adapter between an
-arbitrary external tool and that fixed shape.
+The shape contract is fixed (eleven shapes, see `DATA_MODEL.md`).
+Getting an arbitrary external service into that fixed shape is a
+hand-written adapter per service, in `server/adapters/`, exporting a
+small menu of named **capabilities** — not an LLM call. This was a
+deliberate pivot away from an earlier MCP+LLM design: that version could
+connect to any MCP server with zero new code, but required a paid
+Anthropic API call on every sync. This version costs nothing to run, in
+exchange for a small adapter file per new service.
+
+A connector represents a credential, not a credential-plus-one-query — a
+GitHub connector just proves "GitHub is connected" (via `.env`). What to
+actually fetch is a per-block choice: which capability of that connector
+(`commit-heatmap`, `recent-commits`, ...) and that capability's own
+params (e.g. a username). This is what lets one connector back many
+differently-configured blocks, and lets one service expose two different
+`list`-shaped views without them colliding.
 
 ## Block types (display primitives, not domain types)
 
@@ -81,10 +94,11 @@ type the block asks for. The mapping actually implemented:
 - `week` from `tasks`: intended to always pair with `filter:
   "this-week"`; groups the filtered tasks by exact date match across
   the 7 fixed days.
-- `heatmap` has no local mapping yet — every heatmap block, local or
-  mcp source alike, renders `sampleHeatmap()`'s fixed sample grid this
-  phase. `ROADMAP.md`'s Phase 2 entry sanctions this explicitly ("won't
-  have anything real to show until a connector exists in Phase 5").
+- `heatmap` has no local mapping — no local day-by-day collection exists
+  in storage. It degrades to the card's empty state, same as any other
+  unhandled (source, type) pairing, until it's `api`-sourced from a
+  connector whose service declares a capability with `resultShape:
+  "heatmap"` (GitHub's `commit-heatmap`, today).
 
 Not every (type, collection) pair is meaningful — a `date-asc` sort
 against `metrics`, for instance, is a no-op, since `Metric` has no date
@@ -92,44 +106,61 @@ field. The resolver degrades safely (returns the input unsorted, or
 `null` for an unhandled pairing, which the card renders as its empty
 state) rather than guessing at semantics that don't exist.
 
-### `mcp`
+### `api`
 
-Reads from one or more connected tools via a plain-language query,
-resolved at sync time through a single batched API call. Config is a
-list of connector IDs plus a free-text query
-(e.g. "my 5 most recent commits, repo name as subtitle").
+Reads from one connected external service via a hand-written adapter,
+resolved at sync time through a direct call to that service's own API.
+Config is a connector ID, a capability ID, and that capability's params
+(e.g. `{ username: "rushil" }`) — never a freeform query. A capability
+is a named operation an adapter declares (`server/adapters/github.ts`
+exports `commit-heatmap` and `recent-commits`, for instance), each with
+its own `resultShape` (which of the eleven block types it fills) and its
+own param schema. The block editor only offers capabilities whose
+`resultShape` matches the block being configured, so an unsupported
+pairing is never selectable in the first place.
 
 ## Connectors
 
-A connector is `{ id, name, url }`, an MCP server URL the user adds
-through Settings. The dashboard doesn't validate or introspect a
-connector on add, it trusts the URL and finds out whether it works at
-the next sync. Connectors are referenced by ID from any number of
-`mcp`-sourced blocks, deleting a connector should warn if blocks still
-reference it rather than silently breaking them.
+A connector is `{ id, name, service }` — a registration that a service
+is in use, not a credential and not a query. `service` picks which
+adapter resolves it (`"github"` today). The one real credential per
+service (e.g. `GITHUB_TOKEN`) lives once in the backend's `.env`, never
+in a connector instance — this is a single-user tool, one account per
+service is the realistic case. What to fetch (capability + params) lives
+on each block's `ApiSource`, not the connector, so one connector can
+back many differently-configured blocks — two heatmaps for two different
+GitHub usernames don't need two connectors, just two blocks pointed at
+the same one with different params.
+
+Connectors are referenced by ID from any number of `api`-sourced blocks,
+deleting a connector should warn if blocks still reference it rather
+than silently breaking them. Settings shows each connector's
+connected/missing status (`GET /api/connectors/status`, checks the
+adapter's required env vars against `.env` without ever exposing their
+values) — this is checked proactively, not discovered only after a
+failed sync.
 
 ## Sync
 
-One button, one batched call, covers every `mcp`-sourced block on the
-board.
+One button, fires every `api`-sourced block's fetch in parallel — each
+is an independent, cheap call to that service's own API, so there's
+nothing to batch or dedupe the way a shared LLM call would need.
 
-1. Collect every block where `source.kind === "mcp"`.
-2. Dedupe the connector URLs referenced across all of them, that's the
-   `mcp_servers` list for the API call.
-3. Build one prompt containing every block's query, each tagged with
-   its block ID and the JSON shape expected back (the shape matches the
-   block's type, see `DATA_MODEL.md`).
-4. One request to the backend proxy, which makes one Anthropic API call
-   with all those MCP servers attached.
-5. Parse the single JSON response, keyed by block ID. Write each
-   result into that block's cache entry. A block whose ID is missing
-   from the response, or whose tool call failed, renders its existing
-   cached state with a stale indicator, never a hard error that blanks
-   the block.
-
-Cap at 15 `mcp`-sourced blocks per sync call. Past that, split into two
-sequential calls and show progress, don't silently truncate which
-blocks get resolved.
+1. Collect every block where `source.kind === "api"`, resolve each
+   one's `connectorId` against `Settings.connectors` (the frontend
+   already holds this in memory, so it resolves the connector's
+   `service` here rather than making the backend keep its own registry).
+   A block whose connector no longer exists fails immediately, no
+   network call.
+2. One request to the backend proxy: `{ blockId, connectorId, service,
+   capability, params }` per resolvable block.
+3. The backend looks up each request's adapter by `service`, runs its
+   `capability` function with `params`, in parallel
+   (`Promise.allSettled`), and returns `{ results, failed }` keyed by
+   block ID.
+4. Write each result into that block's cache entry. A block whose ID
+   comes back in `failed` renders its existing cached state with a
+   stale indicator, never a hard error that blanks the block.
 
 `local`-sourced blocks are not part of sync. They render on every app
 load and every relevant data change (a task's percent changing
@@ -140,8 +171,8 @@ button entirely.
 
 The gear icon opens exactly two sections:
 
-1. **Connectors** — add (name + URL), view, remove. The full manage
-   surface.
+1. **Connectors** — add (name + service), view each one's
+   connected/missing status, remove. The full manage surface.
 2. **Theme** — named preset (Forest, Slate, Plum, Charcoal), light/dark
    mode, and a custom accent override, tint and "strong" shades
    derived programmatically from whichever accent ends up active.
@@ -182,7 +213,7 @@ creation. The card header exposes a small dropdown for both (visible
 next to the title, e.g. "This Month ▾" on a metrics block, "Today ▾"
 on a task list). Changing it writes straight back to that block's
 `source` config and re-renders immediately, no sync required, this is
-still local data. `mcp`-sourced blocks don't get this control, their
+still local data. `api`-sourced blocks don't get this control, their
 shape comes from whatever the last sync returned.
 
 ## Personalization
@@ -198,8 +229,8 @@ a placeholder like "there" or "friend".
 Every block (except while adding) shows a kebab menu with:
 
 - **Edit block** — reopens the Add/Edit panel pre-filled, change
-  title, query, connectors, or source config without deleting the
-  block.
+  title, connector, capability, params, or source config without
+  deleting the block.
 - **Move up / move down** — reorders within the board. This is the only
   positioning mechanism, no drag, no coordinates.
 - **Width: Half / Width: Full** — the only sizing control. No custom
@@ -212,12 +243,18 @@ Three steps, in this order, matching the reference design:
 
 1. **Choose block type** — grid of the eleven types.
 2. **Data source** — for every type except text/links: toggle between
-   Local and MCP-connected, then the relevant config (collection+sort+
-   filter, or connector checkboxes+query). `heatmap` will almost
-   always be MCP in practice, few people have a local day-by-day count
-   worth a heatmap, but the toggle stays available for consistency,
-   don't special-case it out. For text/links: skip this step, there's
-   nothing to configure.
+   Local and Connected service, then the relevant config. Local shows
+   collection+sort+filter. Connected service shows a cascade: a
+   connector picker (filtered to connectors whose service has any
+   capability matching this block type), then a capability picker
+   (filtered to that connector's capabilities matching this block
+   type), then that capability's own params rendered as plain labeled
+   fields (e.g. a GitHub username) — each level empty/disabled until
+   the one before it is chosen. `heatmap` will almost always be a
+   connected service in practice, few people have a local day-by-day
+   count worth a heatmap, but the toggle stays available for
+   consistency, don't special-case it out. For text/links: skip this
+   step, there's nothing to configure.
 3. **Block settings** — title, width (half/full), category (free text
    with autocomplete from categories already in use, optional, blank
    means the block only ever shows under Overview).
@@ -257,9 +294,19 @@ call, ever.
 
 ## Backend proxy
 
-One route, roughly `POST /api/sync`. Accepts the batched prompt and the
-deduped `mcp_servers` list from the frontend, makes the actual call to
-`https://api.anthropic.com/v1/messages` with the server-side API key,
-returns the parsed JSON to the frontend. This is the only place the key
-exists. If this route is missing, sync must fail loudly in the UI, not
-fall back to a client-side key.
+Two routes:
+
+- `POST /api/sync` — accepts a list of `{ blockId, connectorId, service,
+  capability, params }` requests from the frontend, runs each through
+  its service's adapter in `server/adapters/` in parallel, returns `{
+  results, failed }` keyed by block ID. Every service credential
+  (`GITHUB_TOKEN`, and any future service's key) lives only here,
+  server-side, loaded from `.env`. Browser code never calls a
+  third-party API directly — it only ever POSTs to this route. A
+  missing credential fails that block's request, not the whole sync —
+  there's no single shared gate the way one Anthropic key used to be.
+- `GET /api/connectors/status?services=github,...` — for each requested
+  service, checks whether its adapter's required env vars are actually
+  set, returns `{ [service]: boolean }`. Lets Settings show
+  connected/missing without a failed sync being the only way to find
+  out, and never returns the credential values themselves.

@@ -8,7 +8,7 @@ export type BlockType =
   | "table" | "chart" | "breakdown" | "heatmap" | "week"
   | "text" | "links";
 
-export type SourceKind = "local" | "mcp";
+export type SourceKind = "local" | "api";
 
 export interface LocalSource {
   kind: "local";
@@ -17,10 +17,11 @@ export interface LocalSource {
   filter: "all" | "today" | "this-week" | "overdue" | "in-progress" | "done";
 }
 
-export interface McpSource {
-  kind: "mcp";
-  connectorIds: string[];
-  query: string;          // plain-language ask, e.g. "my 5 most recent commits"
+export interface ApiSource {
+  kind: "api";
+  connectorId: string;      // resolves against Settings.connectors, gives the service
+  capability: string;       // matches a Capability.id the connector's service adapter declares
+  params?: Record<string, string>;   // e.g. { username: "rushil" } for GitHub's commit-heatmap
 }
 
 export interface Block {
@@ -30,13 +31,13 @@ export interface Block {
   width: "half" | "full";
   order: number;
   category?: string;      // free text, drives the sidebar filter chips, blank = only shows under "Overview"
-  source?: LocalSource | McpSource;   // absent for "text" and "links"
+  source?: LocalSource | ApiSource;   // absent for "text" and "links"
 }
 
 // ## Shapes returned per block type
 //
-// What a `local` resolver or an `mcp` sync response must produce, keyed by
-// block ID for `mcp`, computed directly for `local`.
+// What a `local` resolver or an `api` sync response must produce, keyed by
+// block ID for `api`, computed directly for `local`.
 
 export type StatResult = { value: string; label: string };
 
@@ -70,13 +71,62 @@ export type WeekResult = {
   }[];                                          // always exactly 7, today through today+6
 };
 
-// ## Connector
+export type BlockResult =
+  | StatResult | StatGridResult | ListResult | ProgressListResult
+  | TableResult | ChartResult | BreakdownResult | HeatmapResult | WeekResult;
 
-export interface Connector {
+// ## Connector
+//
+// A connector represents a credential, not a credential-plus-one-query: it
+// records that a service is in use, nothing more. No URL, no params, no
+// secret — the one real credential per service (e.g. GITHUB_TOKEN) lives
+// once in the backend's .env, never in a Connector instance. What to
+// actually fetch (which username, which capability) lives on each block's
+// ApiSource instead, so one connector can back many differently-configured
+// blocks. Adding a new service is one more union member here plus one
+// adapter in server/adapters/, not a shape change to this type.
+
+export type Connector = {
   id: string;
   name: string;
-  url: string;
-}
+  service: "github";
+};
+
+export type ConnectorService = Connector["service"];
+
+export const SERVICE_LABELS: Record<ConnectorService, string> = {
+  github: "GitHub",
+};
+
+// A named, adapter-declared operation: what it returns (resultShape, one
+// of the eleven block types) and what params it needs. Mirrors each
+// backend adapter's own capability list (server/adapters/) — the block
+// editor's capability dropdown reads from this once a connector's service
+// is known, filtered to capabilities whose resultShape matches the block
+// being configured.
+export type Capability = {
+  id: string;
+  label: string;
+  resultShape: BlockType;
+  params: { key: string; label: string; type: "text" | "number" }[];
+};
+
+export const CAPABILITIES: Record<ConnectorService, Capability[]> = {
+  github: [
+    {
+      id: "commit-heatmap",
+      label: "Commit heatmap",
+      resultShape: "heatmap",
+      params: [{ key: "username", label: "GitHub username", type: "text" }],
+    },
+    {
+      id: "recent-commits",
+      label: "Recent commits",
+      resultShape: "list",
+      params: [{ key: "username", label: "GitHub username", type: "text" }],
+    },
+  ],
+};
 
 // ## Task (local collection)
 
@@ -143,23 +193,36 @@ export interface Settings {
   connectors: Connector[];
 }
 
-// ## Sync cache (per mcp-sourced block)
+// ## Sync cache (per api-sourced block)
 
 export interface SyncCacheEntry {
   blockId: string;
   syncedAt: string;      // ISO timestamp
-  result: StatResult | StatGridResult | ListResult | ProgressListResult | TableResult | ChartResult | BreakdownResult | HeatmapResult | WeekResult;
+  result: BlockResult;
   stale: boolean;         // true if last sync attempt failed to return this block
 }
 
 // ## Sync request/response (frontend to backend proxy)
+//
+// Each request carries the connector's service directly — the backend has
+// no database of its own to resolve connectorId -> service, and the
+// frontend already has Settings.connectors in memory, so it resolves this
+// once and sends it along. No dedupe, no batching beyond "one HTTP call
+// covers every block": every request is an independent, cheap, direct
+// call to that service's own API (no LLM in the loop), so the backend
+// just fans them out in parallel.
 
 export interface SyncRequest {
-  connectors: Connector[];          // deduped, only ones referenced by mcp blocks
-  requests: { blockId: string; query: string; shape: BlockType }[];
+  requests: {
+    blockId: string;
+    connectorId: string;
+    service: ConnectorService;
+    capability: string;
+    params?: Record<string, string>;
+  }[];
 }
 
 export interface SyncResponse {
-  results: Record<string, StatResult | StatGridResult | ListResult | ProgressListResult | TableResult | ChartResult | BreakdownResult | HeatmapResult | WeekResult>;
+  results: Record<string, BlockResult>;
   failed: string[];      // block IDs that didn't come back, render stale instead of blank
 }

@@ -11,14 +11,15 @@ import type {
   TableResult,
   ChartResult,
   BreakdownResult,
-  HeatmapResult,
   WeekResult,
 } from "../types";
 
 // The one local-source resolver (ARCHITECTURE.md): every local block goes
 // through this, no per-block bespoke storage reads. Given a block's own
 // type, it shapes tasks/metrics into that type's result, per DATA_MODEL.md.
-// heatmap is deliberately absent — see sampleHeatmap() below.
+// heatmap is deliberately absent — no local day-by-day collection exists in
+// storage, so it degrades to the card's empty state, same as any other
+// unhandled (source, type) pairing.
 
 export type LocalResult =
   | StatResult
@@ -208,18 +209,4 @@ export function resolveLocal(block: Block): LocalResult | null {
   }
   const metrics = sortMetrics(storage.get("metrics") ?? [], sort);
   return shapeFromMetrics(block.type, metrics);
-}
-
-// heatmap has no real local data shape yet (no day-by-day collection exists
-// in storage) — ROADMAP.md's Phase 2 entry explicitly sanctions fake data
-// here until a connector exists in Phase 5. Deterministic, not random, so it
-// doesn't flicker on every render.
-export function sampleHeatmap(): HeatmapResult {
-  const start = today();
-  const days = Array.from({ length: 84 }, (_, i) => {
-    const date = addDays(start, i - 83);
-    const hash = Array.from(date).reduce((a, c) => a + c.charCodeAt(0), 0);
-    return { date, value: hash % 5 };
-  });
-  return { days };
 }

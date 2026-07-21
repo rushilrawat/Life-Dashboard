@@ -15,7 +15,8 @@ import {
 import { useState } from "react";
 import type React from "react";
 import { FILTER_OPTIONS, SORT_OPTIONS } from "../lib/localSourceOptions";
-import type { Block, BlockType, Connector, LocalSource, McpSource } from "../types";
+import type { ApiSource, Block, BlockType, Connector, LocalSource } from "../types";
+import { CAPABILITIES } from "../types";
 
 const BLOCK_TYPES: { type: BlockType; label: string; icon: typeof Hash }[] = [
   { type: "stat", label: "Stat", icon: Hash },
@@ -38,7 +39,7 @@ export interface BlockFormData {
   title: string;
   width: "half" | "full";
   category?: string;
-  source?: LocalSource | McpSource;
+  source?: LocalSource | ApiSource;
 }
 
 interface Props {
@@ -51,23 +52,45 @@ interface Props {
 }
 
 const defaultLocal: LocalSource = { kind: "local", collection: "tasks", sort: "date-desc", filter: "all" };
-const defaultMcp: McpSource = { kind: "mcp", connectorIds: [], query: "" };
+const defaultApi: ApiSource = { kind: "api", connectorId: "", capability: "", params: {} };
 
 export default function BlockEditor({ mode, initial, categoriesInUse, connectors, onSave, onClose }: Props) {
   const [type, setType] = useState<BlockType>(initial?.type ?? "stat");
-  const [sourceKind, setSourceKind] = useState<"local" | "mcp">(initial?.source?.kind ?? "local");
-  // Local and mcp config are kept side by side, not reset when the toggle
-  // flips, so switching back and forth doesn't lose what was typed.
+  const [sourceKind, setSourceKind] = useState<"local" | "api">(initial?.source?.kind ?? "local");
+  // Local and api config are kept side by side, not reset when the toggle
+  // flips, so switching back and forth doesn't lose what was picked.
   const [local, setLocal] = useState<LocalSource>(
     initial?.source?.kind === "local" ? initial.source : defaultLocal,
   );
-  const [mcp, setMcp] = useState<McpSource>(initial?.source?.kind === "mcp" ? initial.source : defaultMcp);
+  const [api, setApi] = useState<ApiSource>(initial?.source?.kind === "api" ? initial.source : defaultApi);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [width, setWidth] = useState<"half" | "full">(initial?.width ?? "half");
   const [category, setCategory] = useState(initial?.category ?? "");
 
   const isEdit = mode === "edit";
   const needsSource = !NO_SOURCE.includes(type);
+  // Only offer connectors whose service has at least one capability that
+  // can actually fill this block's type.
+  const compatibleConnectors = connectors.filter((c) =>
+    CAPABILITIES[c.service]?.some((cap) => cap.resultShape === type),
+  );
+  const selectedConnector = connectors.find((c) => c.id === api.connectorId);
+  const availableCapabilities = selectedConnector
+    ? CAPABILITIES[selectedConnector.service].filter((cap) => cap.resultShape === type)
+    : [];
+  const selectedCapability = availableCapabilities.find((cap) => cap.id === api.capability);
+
+  function handleConnectorChange(connectorId: string) {
+    setApi({ kind: "api", connectorId, capability: "", params: {} });
+  }
+
+  function handleCapabilityChange(capability: string) {
+    setApi((a) => ({ ...a, capability, params: {} }));
+  }
+
+  function handleParamChange(key: string, value: string) {
+    setApi((a) => ({ ...a, params: { ...a.params, [key]: value } }));
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,15 +99,8 @@ export default function BlockEditor({ mode, initial, categoriesInUse, connectors
       title: title.trim(),
       width,
       category: category.trim() || undefined,
-      source: needsSource ? (sourceKind === "local" ? local : mcp) : undefined,
+      source: needsSource ? (sourceKind === "local" ? local : api) : undefined,
     });
-  }
-
-  function toggleConnector(id: string) {
-    setMcp((m) => ({
-      ...m,
-      connectorIds: m.connectorIds.includes(id) ? m.connectorIds.filter((c) => c !== id) : [...m.connectorIds, id],
-    }));
   }
 
   return (
@@ -125,8 +141,8 @@ export default function BlockEditor({ mode, initial, categoriesInUse, connectors
                 <button type="button" className={sourceKind === "local" ? "active" : ""} onClick={() => setSourceKind("local")}>
                   Local
                 </button>
-                <button type="button" className={sourceKind === "mcp" ? "active" : ""} onClick={() => setSourceKind("mcp")}>
-                  MCP-connected
+                <button type="button" className={sourceKind === "api" ? "active" : ""} onClick={() => setSourceKind("api")}>
+                  Connected service
                 </button>
               </div>
 
@@ -165,23 +181,48 @@ export default function BlockEditor({ mode, initial, categoriesInUse, connectors
                 </div>
               ) : (
                 <div className="editor-fields">
-                  <div className="connector-checklist">
-                    {connectors.length === 0 && <p className="editor-hint">No connectors yet — add one in Settings.</p>}
-                    {connectors.map((c) => (
-                      <label key={c.id} className="connector-check">
-                        <input type="checkbox" checked={mcp.connectorIds.includes(c.id)} onChange={() => toggleConnector(c.id)} />
-                        {c.name}
+                  {compatibleConnectors.length === 0 ? (
+                    <p className="editor-hint">No compatible connector — add one in Settings.</p>
+                  ) : (
+                    <>
+                      <label>
+                        Connector
+                        <select value={api.connectorId} onChange={(e) => handleConnectorChange(e.target.value)}>
+                          <option value="">Select a connector…</option>
+                          {compatibleConnectors.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
                       </label>
-                    ))}
-                  </div>
-                  <label>
-                    Query
-                    <textarea
-                      value={mcp.query}
-                      placeholder="e.g. my 5 most recent commits, repo name as subtitle"
-                      onChange={(e) => setMcp((m) => ({ ...m, query: e.target.value }))}
-                    />
-                  </label>
+                      <label>
+                        Capability
+                        <select
+                          value={api.capability}
+                          disabled={!selectedConnector}
+                          onChange={(e) => handleCapabilityChange(e.target.value)}
+                        >
+                          <option value="">Select a capability…</option>
+                          {availableCapabilities.map((cap) => (
+                            <option key={cap.id} value={cap.id}>
+                              {cap.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {selectedCapability?.params.map((p) => (
+                        <label key={p.key}>
+                          {p.label}
+                          <input
+                            type={p.type}
+                            value={api.params?.[p.key] ?? ""}
+                            onChange={(e) => handleParamChange(p.key, e.target.value)}
+                          />
+                        </label>
+                      ))}
+                    </>
+                  )}
                 </div>
               )}
             </section>

@@ -7,9 +7,11 @@ between phases, not one long unsupervised run.
 
 ## Phase 0 — Scaffold
 
-Vite + React + TypeScript frontend. Minimal Express backend with one
-route, `POST /api/sync`, stubbed to return an empty result for now.
-`.env.example` with `ANTHROPIC_API_KEY`. `src/types.ts` matching
+Vite + React + TypeScript frontend. Minimal Express backend with two
+routes, `POST /api/sync` and `GET /api/connectors/status`, both
+stubbed to return empty/not-connected for now. `.env.example` present
+but empty of any specific key for now, service tokens get added as
+each adapter is built starting Phase 5. `src/types.ts` matching
 `DATA_MODEL.md` exactly. `src/lib/storage.ts` as the one typed wrapper
 around `localStorage`. No UI yet beyond a blank page that confirms both
 servers run and talk to each other.
@@ -26,13 +28,6 @@ nothing else uses it yet. Empty board grid. No blocks render, this
 phase is purely shell, palette, and the sidebar frame, confirm it
 looks right, including a theme switch and a mode toggle, before any
 block logic exists.
-
-The board grid was revisited later, post-Phase-5, at the user's request:
-fixed 4-column desktop grid with dense auto-flow instead of a loose
-`auto-fit`, so a normal block set packs onto one screen instead of
-scrolling from wasted gaps — `card--half` reliably spans half the
-columns now rather than whatever `auto-fit` happened to land on. See
-`src/styles/app.css`'s `.board` rules.
 
 ## Phase 2 — Local blocks, end to end
 
@@ -64,47 +59,47 @@ blocks without touching code.
 
 ## Phase 4 — Settings panel
 
-Gear icon opens Connectors (add/remove name+service, connected/missing
-status per connector against `GET /api/connectors/status`) and Theme
-(preset switch, light/dark mode, custom accent override, derived
-tint/strong applied live). Wire the sidebar's connector quick-list and
-"Add connector" row to this same state. Confirm theme and mode changes
+Gear icon opens Connectors (pick a service, label it, see connected/
+missing status against `GET /api/connectors/status`) and Theme (preset
+switch, light/dark mode, custom accent override, derived tint/strong
+applied live). Wire the sidebar's connector quick-list and "Add
+connector" row to this same state. Confirm theme and mode changes
 repaint every block correctly, including the ring/breakdown component,
 before moving on.
 
 ## Phase 5 — Sync engine
 
-Originally spec'd around an MCP+Anthropic-LLM sync engine (any MCP
-server, a plain-English query, Claude as the adapter). Pivoted at the
-user's request to hand-written per-service adapters calling each
-service's own free API directly — genuinely $0 to run, no Anthropic key
-involved, in exchange for a small adapter file per new service instead
-of zero-code MCP connections. See `ARCHITECTURE.md`'s Source kinds and
-Sync sections for the resulting design.
+Reversed from the original MCP-plus-Anthropic-API design partway
+through this phase, on purpose, to get sync cost to effectively zero.
+See `ARCHITECTURE.md`'s Sync section for the current design. This
+phase's actual scope:
 
-Revised a second time, still within this phase: connectors moved from
-holding one hardcoded query (`{service, config}`) to representing just a
-credential (`{service}`), with each block instead picking a named
-**capability** off that connector's service (`commit-heatmap`,
-`recent-commits`, ...) plus that capability's own params. A connector
-now backs many differently-configured blocks instead of one fixed query,
-and one service can expose two different views of the same shape (two
-`list` capabilities) without them colliding — the thing the first
-revision's `(service, blockType)` mapping couldn't express. Added `GET
-/api/connectors/status` alongside `POST /api/sync` so Settings can show
-connected/missing proactively instead of only after a failed sync.
+- `POST /api/sync` resolves the batched `{ blockId, connectorId,
+  capability, params }[]` request by looking up each connector's
+  service, calling that adapter's capability function, in parallel.
+- `GET /api/connectors/status` checks which services have their
+  required env var set.
+- One real adapter, `src/server/adapters/github.ts`, with at least
+  `recent-commits` (`list`) and `commit-heatmap` (`heatmap`)
+  capabilities, backed by GitHub's API directly, `GITHUB_TOKEN` in
+  `.env`.
+- Frontend sync button wired to the real endpoint. Response parsing
+  into `sync-cache:<blockId>` entries. Stale-state rendering for
+  blocks whose adapter call failed.
 
-Backend proxy (`server/adapters/`) resolves each `api`-sourced block's
-request directly against its service's capability function, all in
-parallel — no batching or dedupe needed once there's no shared LLM call
-to fit into. Frontend sync button wired to it. Response parsing into
-`sync-cache:<blockId>` entries. Stale-state rendering for blocks whose
-result didn't come back. Done criterion: a GitHub connector, real
-contribution data rendering in a `heatmap` block via `commit-heatmap`,
-end to end — verifiable live, for $0, no deferral needed since GitHub's
-API is free. Google Calendar (or another service) is the natural next
-connector, following the same adapter pattern, deferred pending its
-OAuth setup (meaningfully more setup than GitHub's single pasted token).
+Delivered and verified for GitHub: empty state, connector creation,
+block assignment, sync, graceful per-block failure when the token's
+missing, real data once it's present. Verify the same end-to-end path
+before calling any future adapter's phase done: add the connector,
+assign a block, sync, confirm real data or a clean failure state, not
+just that the code compiles.
+
+**Adding another service** (Slack, Notion, Calendar, whatever's next)
+is its own small phase from here, not a re-run of this one: add
+`"slack"` to `SupportedService`, write `src/server/adapters/slack.ts`
+with its own capability list, add its token to `.env.example`, confirm
+end to end the same way GitHub was verified. Each one should get its
+own stop-and-review, they're independent, no reason to batch them.
 
 ## Phase 6 — Polish
 
