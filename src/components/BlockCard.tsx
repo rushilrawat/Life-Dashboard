@@ -5,7 +5,7 @@ import { FILTER_OPTIONS, SORT_OPTIONS } from "../lib/localSourceOptions";
 import * as storage from "../lib/storage";
 import type { Block, LocalSource } from "../types";
 
-function timeAgo(iso: string): string {
+export function timeAgo(iso: string): string {
   const hours = Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000);
   if (hours < 1) return "just now";
   if (hours < 24) return `${hours}h ago`;
@@ -25,7 +25,7 @@ interface Props {
   onSourceChange: (source: LocalSource) => void;
 }
 
-function KebabMenu({ onEdit, onMoveUp, onMoveDown, canMoveUp, canMoveDown, onSetWidth, onDelete, width }: Omit<Props, "block" | "children" | "onSourceChange"> & { width: Block["width"] }) {
+export function KebabMenu({ onEdit, onMoveUp, onMoveDown, canMoveUp, canMoveDown, onSetWidth, onDelete, width }: Omit<Props, "block" | "children" | "onSourceChange"> & { width: Block["width"] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 

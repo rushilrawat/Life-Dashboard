@@ -3,6 +3,7 @@ import Board from "./components/Board";
 import BlockEditor from "./components/BlockEditor";
 import type { BlockFormData } from "./components/BlockEditor";
 import Header from "./components/Header";
+import ReviewBanner, { shouldShowReviewBanner } from "./components/ReviewBanner";
 import SettingsPanel from "./components/SettingsPanel";
 import Sidebar from "./components/Sidebar";
 import * as storage from "./lib/storage";
@@ -29,6 +30,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState("Not synced yet");
+  const [showReviewBanner, setShowReviewBanner] = useState(shouldShowReviewBanner);
 
   useEffect(() => {
     storage.set("settings", settings);
@@ -65,6 +67,11 @@ export default function App() {
 
   function updateSource(id: string, source: LocalSource) {
     setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, source } : b)));
+  }
+
+  function dismissReviewBanner() {
+    storage.set("last-review", new Date().toISOString());
+    setShowReviewBanner(false);
   }
 
   async function handleSync() {
@@ -130,8 +137,10 @@ export default function App() {
           syncStatus={syncStatus}
           onSync={handleSync}
         />
+        {showReviewBanner && <ReviewBanner onDismiss={dismissReviewBanner} />}
         <Board
           blocks={visibleBlocks}
+          isOverview={activeCategory === null}
           onAddBlock={() => setEditor({ mode: "add" })}
           onEditBlock={(block) => setEditor({ mode: "edit", block })}
           onSwapOrder={swapOrder}

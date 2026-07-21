@@ -114,11 +114,16 @@ jitter in width as they update.
 
 ## Layout
 
-- Board is a responsive grid, `repeat(auto-fit, minmax(320px, 1fr))`.
-  A `full`-width block spans the full row (`grid-column: 1 / -1`), a
-  `half`-width block takes one cell.
+- Board is a fixed 4-column grid (`repeat(4, 1fr)`) with
+  `grid-auto-flow: dense` so a full-width card breaking the row doesn't
+  leave a gap behind it — a normal block set packs onto one screen
+  instead of scrolling from wasted space. `half` spans 2 of the 4
+  columns (a true half, not whatever an `auto-fit` grid happened to
+  land on), `full` spans all 4. Below 900px width: 2 columns (`half`
+  spans 1, `full` spans 2). Below 480px: 1 column, both widths collapse
+  to it — there's no room left to justify a second column.
 - Card: `--surface` background, `1px solid var(--border)`, 12px
-  radius, 20px padding. No shadows, flat only, dark surfaces don't need
+  radius, 16px padding. No shadows, flat only, dark surfaces don't need
   elevation cues the way light ones do, contrast against `--bg` is
   enough.
 - Card header: title (15px/600) on the left, block-specific meta (a
@@ -134,6 +139,61 @@ jitter in width as they update.
   reliably produced a worse-looking glyph than just leaving border and
   background off and letting the native arrow show. `api`-sourced
   cards never show either, their data isn't re-orderable client-side.
+
+## Hero band
+
+On the **Overview** view only, every `stat` and `stat-grid` block renders in
+a hero band above the board grid instead of as a regular card — a
+glanceable strip of big numbers, the one deliberate focal point on the
+page. Switching to a category filter drops the hero band entirely and
+those same blocks fall back to rendering as regular cards, respecting
+`width` like every other type; hero is a whole-board summary concept, it
+doesn't make sense for a filtered slice.
+
+This is a pure rendering rule keyed off `block.type` and whether a
+category filter is active, not a new field — nothing changes in
+`DATA_MODEL.md`. A `stat` block becomes one tile, labeled with the
+block's own `title`. A `stat-grid` block flattens its `items` into one
+tile per item, each labeled with *that item's own* `label` (the block's
+`title` doesn't apply per-item, so using it would repeat the same label
+across every tile from that block). Reordering: Move Up/Down on a hero
+tile swaps `order` with the adjacent *hero* block, not whatever's
+adjacent in the full board order, so it visibly reorders the strip
+instead of silently doing nothing.
+
+Visual spec: one `--surface`/`--border`/12px-radius container spanning
+the board width (same card language as `.card`, not a second visual
+system), tiles separated by `1px solid var(--border)` dividers (drawn
+between tiles and between clusters, never as a trailing border on the
+band's outer edge), wrapping to more rows once tiles run out of
+horizontal room. Value at 34-36px/700 tabular-nums — bigger than a
+regular card's 30px `.stat-value`, so the band actually reads as "hero"
+rather than more of the same. Label beneath at 12-13px
+`--text-secondary`. `StatGridResult.delta`, when present, renders small
+and plain — `--text-secondary`, same treatment `StatGridBlock` already
+gives it as a regular card — not colored by its leading character: this
+data model defines no sign-to-status convention for delta, so coloring
+it by "+"/"-" would be exactly the arbitrary per-card variety
+`CLAUDE.md`'s semantic-color rule reserves for real status meaning, and
+would make the same field render two different ways depending only on
+which view happened to be active. One kebab per block (not per tile),
+opacity 0 by default and 1 on hover/focus-within, top-right of the
+block's tile cluster — edit, move, width, and delete all still work
+exactly as they do on a regular card, per `CLAUDE.md`'s
+block-level-operations rule. A block whose data hasn't resolved yet
+(not synced, or a local source that isn't configured) still renders as
+a compact tile with its own working kebab, same as `BlockBody`'s empty
+state for a regular card — it never just disappears, that would make an
+uncategorized block unreachable on the one view it's guaranteed to
+appear on. A hero tile whose last sync failed shows the same
+`.stale-indicator` a regular card would ("last synced Xh ago"), not a
+silently-outdated number.
+
+Deliberately dropped from the hero tile: the per-card filter/sort
+dropdowns `local`-sourced cards normally get in their header (see
+Layout, below). Two inline `<select>`s on top of a big number undercuts
+the point of the treatment. Quick-adjust is still available, just one
+click further away via Edit Block — a real trade-off, not an oversight.
 
 ## Row anatomy (list, progress-list, table)
 
@@ -191,6 +251,14 @@ sidebar: theme switcher, a small preset-name dropdown ("Forest ▾")
 next to a sun/moon toggle for light/dark mode, both write straight to
 `Settings` and repaint immediately.
 
+Below 640px width, the sidebar narrows to ~168px and every label drops
+to 12px rather than collapsing to an icon-only rail — nav items are
+freeform category text with no per-item icon to fall back to, so an
+icon rail would need a category→icon mapping this app deliberately
+doesn't have. Same list, same interaction, just tighter. The header
+wraps at this width too, and the sync status text hides (the Sync
+button and its spinner stay, that's the part that matters).
+
 ## Header
 
 Above the board, not inside the sidebar. Left: greeting
@@ -231,7 +299,13 @@ arc.
 
 **Bar chart**: simple vertical bars, `--accent` fill, day-of-week
 labels beneath in `--text-muted`, no axis lines, no gridlines, the
-bars carry the whole chart.
+bars carry the whole chart. A `chart` block should plot one comparable
+series, same unit across every point (task counts by category, commits
+by day) — not several differently-scaled named values side by side. The
+local resolver can't tell "6 days," "82%," and "18h" apart, they're all
+just numbers to a bar; picking comparable data for a `chart` block is on
+whoever configures it, same as picking a sensible `local` collection for
+any other type.
 
 **Heatmap** (the `heatmap` block type): grid of small squares, one
 column per week, one row per weekday, GitHub-contribution-graph
@@ -345,3 +419,31 @@ accent is actually set.
   icon and disables, card contents stay as they were until the batch
   resolves, no per-card skeleton loaders, the whole sync is one atomic
   operation from the user's point of view.
+- **Incomplete block config**: the Add/Edit panel's Save button
+  disables (50% opacity) until a Connected-service source has a
+  connector, a capability, and every one of that capability's params
+  filled in — the same spirit as the browser-native `required` on
+  Title, just for a multi-field cascade native validation can't cover.
+  No red error text, the disabled button is the signal.
+
+## Weekly review banner
+
+A dismissible strip between the header and the board, shown when
+`last-review` (`DATA_MODEL.md`'s localStorage key) is absent or more
+than 7 days old. Deliberately **not** `--warning`-colored — this is a
+nudge, not a status indicator, and semantic colors are reserved for
+real data status per `CLAUDE.md`. `--accent-tint` background,
+`--border` outline, matching the card radius. A small calendar icon in
+`--accent-strong`, one line of copy, a dismiss × on the right that
+writes `last-review` to now and hides the banner — it reappears
+naturally once 7 more days pass.
+
+## Keyboard focus
+
+One global `:focus-visible` rule — 2px `--accent` outline, 2px offset
+— rather than per-component focus styling. `:focus-visible` specifically,
+not `:focus`, so it only appears for keyboard navigation, not mouse
+clicks (`*:focus:not(:focus-visible) { outline: none }` suppresses the
+browser default on click). Applies everywhere by default: nav items,
+buttons, inputs, selects, the kebab menu, block-type tiles, all of it,
+with no exceptions carved out.

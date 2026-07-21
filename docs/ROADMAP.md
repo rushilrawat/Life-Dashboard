@@ -34,6 +34,36 @@ scrolling from wasted gaps — `card--half` reliably spans half the
 columns now rather than whatever `auto-fit` happened to land on. See
 `src/styles/app.css`'s `.board` rules.
 
+Revisited again post-Phase-6, at the user's request for a genuinely
+better UI: `stat`/`stat-grid` blocks now promote into a hero band above
+the grid on Overview instead of rendering as regular cards, giving the
+board an actual focal point. Also fixed two real content bugs this pass
+surfaced: the seeded `stat` block was titled "Habit Score" but always
+displayed `metrics[0]` ("Current Streak") due to how the local resolver
+picks a single metric, and the seeded `chart` block bar-charted three
+differently-scaled metrics (a day count, a percent, and hours) on one
+linear axis, crushing two of the three bars. Both reseeded against
+`tasks` instead, which the resolver already shapes correctly. See
+`ARCHITECTURE.md`'s Board layout section and `DESIGN.md`'s Hero band
+section.
+
+A 10-angle `/code-review` pass on this change surfaced and fixed five
+real issues before commit: an unresolved hero-eligible block used to
+render nothing at all (no tile, no kebab — unreachable if uncategorized,
+since it's also excluded from the grid on Overview by type), now falls
+back to a compact tile with a working kebab, same spirit as `BlockBody`'s
+empty state; hero tiles never showed the stale-sync indicator regular
+cards get, now they do; the delta field was colored green/red by its
+leading `+`/`-` character, a made-up convention this data model never
+defined and a CLAUDE.md semantic-color violation once the same field's
+plain rendering as a regular card was compared side by side, now plain
+throughout; a CSS rule meant to remove the hero band's trailing divider
+never matched (targeted the wrong element as "last child"), replaced
+with an adjacent-sibling selector that can't have that failure mode; and
+`BlockEditor`'s completeness check could mark a Connected-service source
+"complete" with a stale, type-mismatched capability after switching the
+block-type tile in Add mode, now the type switch resets the source.
+
 ## Phase 2 — Local blocks, end to end
 
 All eleven block components, including `breakdown` and the
@@ -112,6 +142,30 @@ Weekly review banner (carried over from the earlier build: show after
 7+ days since last review, one-click dismiss). Loading and error states
 per `DESIGN.md`. Responsive check down to a narrow viewport. Keyboard
 focus visible on every interactive element. README screenshot.
+
+Delivered: `ReviewBanner.tsx`, accent-tint (not warning-colored, this
+is a nudge not a status) with a calendar icon, dismiss writes
+`last-review`. The one real "error state" gap turned out to be the
+block editor letting an incomplete Connected-service source save
+silently — Save now disables until connector, capability, and every
+param are filled in, per `DESIGN.md`'s States section. Keyboard focus:
+one global `:focus-visible` rule rather than per-component styling, so
+nothing was missed by omission. Responsive: the board's existing
+4-column dense grid gets a 2-column fallback at 900px (from the
+earlier density pass) and a 1-column fallback at 480px; the sidebar
+narrows at 640px rather than collapsing to an icon rail — nav items are
+freeform category text with no icon to fall back to, an icon-only rail
+was the original pitch but doesn't actually work without inventing a
+category→icon mapping this app deliberately doesn't have, so a
+narrower labeled sidebar shipped instead. README fully rewritten to
+match the capability-based/$0 architecture (it had drifted all the way
+back to describing the original MCP+Anthropic design) with a real
+screenshot at `docs/screenshot.png`.
+
+This was also the point the whole roadmap was executed through in one
+pass, at the person's explicit request ("proceed with phase 6 ...
+execute") — everywhere else in this doc, phases were built one at a
+time with a stop-and-confirm between each.
 
 ## Explicitly out of scope for this roadmap
 

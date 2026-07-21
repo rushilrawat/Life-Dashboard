@@ -79,6 +79,25 @@ export default function BlockEditor({ mode, initial, categoriesInUse, connectors
     ? CAPABILITIES[selectedConnector.service].filter((cap) => cap.resultShape === type)
     : [];
   const selectedCapability = availableCapabilities.find((cap) => cap.id === api.capability);
+  // Connected-service sources need a fully-filled cascade before they're
+  // worth saving — an incomplete one would just render "Not synced yet"
+  // forever with no way to tell why.
+  const apiSourceComplete =
+    api.connectorId !== "" &&
+    api.capability !== "" &&
+    (selectedCapability?.params ?? []).every((p) => (api.params?.[p.key] ?? "").trim() !== "");
+  const canSubmit = !needsSource || sourceKind === "local" || apiSourceComplete;
+
+  function handleTypeChange(t: BlockType) {
+    if (t === type) return;
+    setType(t);
+    // A connector/capability picked for the previous type doesn't
+    // necessarily fill this one (a different resultShape, or none at all) —
+    // clearing it forces the cascade to be re-picked, instead of leaving a
+    // stale capability id that apiSourceComplete's `?? []` fallback would
+    // treat as "no params to fill" and silently mark complete.
+    setApi(defaultApi);
+  }
 
   function handleConnectorChange(connectorId: string) {
     setApi({ kind: "api", connectorId, capability: "", params: {} });
@@ -123,7 +142,7 @@ export default function BlockEditor({ mode, initial, categoriesInUse, connectors
                   type="button"
                   className={`type-tile${type === t ? " selected" : ""}`}
                   disabled={isEdit && t !== type}
-                  onClick={() => setType(t)}
+                  onClick={() => handleTypeChange(t)}
                   title={label}
                 >
                   <Icon size={18} />
@@ -268,7 +287,7 @@ export default function BlockEditor({ mode, initial, categoriesInUse, connectors
           <button type="button" className="btn-ghost" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="btn-accent">
+          <button type="submit" className="btn-accent" disabled={!canSubmit}>
             {isEdit ? "Save" : "Add Block"}
           </button>
         </div>

@@ -28,8 +28,8 @@ const metrics: Metric[] = [
 ];
 
 const blocks: Block[] = [
-  { id: "b-stat", type: "stat", title: "Habit Score", width: "half", order: 0,
-    source: { kind: "local", collection: "metrics", sort: "name", filter: "all" } },
+  { id: "b-stat", type: "stat", title: "Due Today", width: "half", order: 0,
+    source: { kind: "local", collection: "tasks", sort: "date-asc", filter: "today" } },
   { id: "b-stat-grid", type: "stat-grid", title: "Metrics", width: "half", order: 1,
     source: { kind: "local", collection: "metrics", sort: "name", filter: "all" } },
   { id: "b-list", type: "list", title: "Recent Tasks", width: "half", order: 2,
@@ -39,8 +39,8 @@ const blocks: Block[] = [
     source: { kind: "local", collection: "tasks", sort: "date-asc", filter: "all" } },
   { id: "b-table", type: "table", title: "All Tasks", width: "full", order: 4,
     source: { kind: "local", collection: "tasks", sort: "name", filter: "all" } },
-  { id: "b-chart", type: "chart", title: "Metrics Overview", width: "half", order: 5,
-    source: { kind: "local", collection: "metrics", sort: "name", filter: "all" } },
+  { id: "b-chart", type: "chart", title: "Tasks by Category", width: "half", order: 5,
+    source: { kind: "local", collection: "tasks", sort: "name", filter: "all" } },
   { id: "b-breakdown", type: "breakdown", title: "Task Breakdown", width: "half", order: 6,
     source: { kind: "local", collection: "tasks", sort: "date-asc", filter: "all" } },
   { id: "b-heatmap", type: "heatmap", title: "Activity", width: "full", order: 7,

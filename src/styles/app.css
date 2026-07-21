@@ -5,6 +5,17 @@
   min-height: 100vh;
 }
 
+/* Keyboard focus, everywhere, one rule instead of per-component styling —
+   :focus-visible so it only appears for keyboard nav, not mouse clicks. */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* ── Sidebar ─────────────────────────────────────────────────────── */
 
 .sidebar {
@@ -113,6 +124,30 @@
   margin-bottom: 24px;
 }
 
+/* A nudge, not a status — accent-tint, not --warning, per CLAUDE.md's
+   semantic-color rule (that's reserved for real data status). */
+.review-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  background: var(--accent-tint);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.review-banner svg {
+  color: var(--accent-strong);
+  flex-shrink: 0;
+}
+
+.review-banner span {
+  flex: 1;
+}
+
 .greeting {
   margin: 0;
   font-size: 22px;
@@ -183,6 +218,88 @@
   color: var(--text);
 }
 
+/* ── Hero band ───────────────────────────────────────────────────── */
+
+/* Overview-only glanceable strip (DESIGN.md's Hero band section): every
+   stat/stat-grid block renders here instead of the grid, big numbers with
+   no per-card chrome. Same --surface/--border/radius language as .card so
+   it reads as part of the system, not a bolted-on second style. */
+.hero-band {
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.hero-block {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.hero-tile {
+  min-width: 140px;
+  padding: 24px 20px;
+}
+
+/* Dividers between tiles and between clusters, never a trailing one on the
+   band's outer edges — an adjacent-sibling selector can't ever match the
+   nonexistent "last" element, unlike a :last-child chain that has to reason
+   about the kebab wrapper also being a sibling. */
+.hero-tile + .hero-tile,
+.hero-block + .hero-block {
+  border-left: 1px solid var(--border);
+}
+
+.hero-tile-value {
+  font-size: 34px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.hero-tile-label {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Same plain treatment as .stat-delta — this data model defines no
+   sign-to-status convention for delta, so coloring it by leading +/- would
+   be exactly the arbitrary per-card variety CLAUDE.md's semantic-color rule
+   reserves for real status meaning. */
+.hero-tile-delta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Stale indicator + kebab share the top-right corner. The indicator (when
+   present) stays visible; the kebab is hover/focus-revealed, one per block
+   cluster (not per tile) — the hero treatment drops per-card chrome, but
+   edit/move/width/delete still have to live somewhere per CLAUDE.md's
+   block-level-operations rule. */
+.hero-block-meta {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hero-kebab {
+  opacity: 0;
+}
+
+.hero-block:hover .hero-kebab,
+.hero-block:focus-within .hero-kebab {
+  opacity: 1;
+}
+
 /* ── Board ───────────────────────────────────────────────────────── */
 
 /* Fixed columns, not auto-fit — half needs to reliably mean half. Dense
@@ -206,6 +323,55 @@
   }
   .card--full {
     grid-column: span 2;
+  }
+}
+
+/* Narrow viewport: the sidebar stays a labeled list (nav items are
+   freeform category text, no per-item icon exists to collapse to), just
+   tighter — a real icon-only rail would need a category->icon mapping
+   this app deliberately doesn't have. */
+@media (max-width: 640px) {
+  .sidebar {
+    width: 168px;
+    padding: 16px 8px 12px;
+  }
+  .wordmark {
+    font-size: 13px;
+    padding: 0 6px 16px;
+  }
+  .nav-item,
+  .connector-row,
+  .theme-select {
+    font-size: 12px;
+  }
+  .main {
+    padding: 16px;
+  }
+  .header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .sync-status {
+    display: none;
+  }
+}
+
+/* Genuinely narrow (phone-width): one column, half and full both go
+   full-width — there's no room left to justify a second column. */
+@media (max-width: 480px) {
+  .board {
+    grid-template-columns: 1fr;
+  }
+  .card--half,
+  .card--full {
+    grid-column: span 1;
+  }
+  .hero-tile {
+    min-width: 50%;
+    padding: 18px 14px;
+  }
+  .hero-tile-value {
+    font-size: 26px;
   }
 }
 
@@ -537,6 +703,11 @@
   font-weight: 500;
   color: #fff;
   cursor: pointer;
+}
+
+.btn-accent:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .empty-state {

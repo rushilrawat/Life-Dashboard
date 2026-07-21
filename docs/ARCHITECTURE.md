@@ -206,6 +206,24 @@ Overview, they only appear as the person actually tags blocks. Most
 real boards should land around two to four, treat a reference design
 showing seven as illustrative range, not a target to hit.
 
+## Board layout: hero band + grid
+
+`Board.tsx` renders two regions, not one. On the Overview view (no
+category filter active), every `stat` and `stat-grid` block is pulled
+out of the regular grid and rendered in a hero band above it; every
+other type, and every block when a category filter *is* active, renders
+in the grid as before. This is a rendering-time split only — keyed off
+`block.type` plus whether `activeCategory` is null in `App.tsx` — not a
+new field on `Block`, so `DATA_MODEL.md` doesn't change. See `DESIGN.md`'s
+Hero band section for the visual spec and the reasoning (a glanceable
+focal point only makes sense for the whole board, not a filtered slice).
+
+Reordering stays the single swap-two-ids mechanism `App.tsx.swapOrder`
+already implements; a hero tile's Move Up/Down just resolves its
+neighbor from the hero-only sub-list instead of the full board, so it
+reorders visibly within the strip instead of silently matching against
+a grid card it isn't rendered next to.
+
 ## Per-block live filter
 
 For a `local`-sourced block, its `sort` and `filter` aren't fixed at
