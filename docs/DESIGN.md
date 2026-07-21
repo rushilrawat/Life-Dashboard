@@ -233,6 +233,22 @@ circle at all. Same data, three visual states at the two extremes and
 everywhere in between, don't add a separate boolean field for this,
 derive it from `percent`.
 
+**Row cap**: `list`, `progress-list`, and `table` show at most 5 rows,
+with a "Show N more" / "Show less" text toggle beneath when there's
+more — same scale and color as `week`'s "+N more" note (11px,
+`--text-muted`), just an interactive `<button>` instead of static text.
+
+**Drag-to-rank** (`list`/`progress-list`, local tasks source only): a
+grip handle (`GripVertical`, 13px, `--text-muted`) leads every row,
+before the existing leading element, `cursor: grab`. A row mid-drag
+drops to 50% opacity. Always-visible (not hover-gated) rank-up/rank-down
+chevrons trail the row, same muted-then-secondary-on-hover treatment as
+the grip, disabled (and visibly dimmed to `--border-strong`) at either
+end of the visible list — this is the keyboard-reachable equivalent of
+the drag, not a secondary affordance, so it never hides behind hover.
+See `ARCHITECTURE.md`'s Task priority section for what a drop actually
+does.
+
 ## Sidebar
 
 Fixed left column, `--surface` background, `1px solid var(--border)`

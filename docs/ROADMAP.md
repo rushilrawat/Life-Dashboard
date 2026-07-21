@@ -64,6 +64,22 @@ with an adjacent-sibling selector that can't have that failure mode; and
 "complete" with a stale, type-mismatched capability after switching the
 block-type tile in Add mode, now the type switch resets the source.
 
+Revisited a third time, same session: the board still needed scrolling
+even with the hero band, so `list`/`progress-list`/`table` now cap to
+their top 5 rows with a "Show more" toggle, and `list`/`progress-list`
+blocks sourced from local tasks gained drag-to-rank — a new `Task.priority`
+field, always-draggable regardless of the block's current sort (a drop
+flips that block's sort to a new "Priority" option), plus keyboard-
+reachable rank-up/down buttons as a full non-drag equivalent. This is
+the first task-mutating code path anywhere in the app. See
+`ARCHITECTURE.md`'s Task priority and drag-to-rank section and
+`DESIGN.md`'s Row anatomy section for the visual spec. Caught one real
+bug during verification: the drag hook's props-to-state sync ran in a
+`useEffect`, which lagged one render behind a shrinking visible set
+(collapsing "Show more") and crashed on a stale id lookup — fixed by
+resetting the live order synchronously during render instead (React's
+own sanctioned pattern for this), not in an effect.
+
 ## Phase 2 — Local blocks, end to end
 
 All eleven block components, including `breakdown` and the
@@ -172,7 +188,11 @@ time with a stop-and-confirm between each.
 Don't pull these in even if they seem like natural next steps mid-
 build, they were cut deliberately, see `CLAUDE.md`:
 
-- Drag-to-position or freeform resize
+- Drag-to-position (block layout on the board) or freeform resize —
+  still out of scope. Row-level drag-to-rank *inside* a list/progress-list
+  block's task data (added post-Phase-6, see below) is a different axis
+  and doesn't reverse this; see `CLAUDE.md`'s non-negotiable for the
+  distinction spelled out.
 - A custom-code / iframe block type
 - Any block action routed through Settings instead of the block's own
   kebab menu

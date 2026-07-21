@@ -80,6 +80,13 @@ function sortTasks(tasks: Task[], sort: LocalSource["sort"]): Task[] {
       return copy.sort((a, b) => b.percent - a.percent);
     case "name":
       return copy.sort((a, b) => a.title.localeCompare(b.title));
+    case "priority":
+      // ?? fallback matters: "Priority" is pickable from the sort dropdown
+      // before anyone has dragged anything, so a task with no priority yet
+      // needs to sort to the end rather than produce NaN comparisons.
+      return copy.sort(
+        (a, b) => (a.priority ?? Number.MAX_SAFE_INTEGER) - (b.priority ?? Number.MAX_SAFE_INTEGER),
+      );
   }
 }
 
@@ -139,10 +146,10 @@ function shapeFromTasks(
       return { items: Object.entries(groups).map(([label, ts]) => ({ value: String(ts.length), label })) };
     }
     case "list":
-      return { items: tasks.map((t) => ({ title: t.title, subtitle: t.category, date: t.date })) };
+      return { items: tasks.map((t) => ({ id: t.id, title: t.title, subtitle: t.category, date: t.date })) };
     case "progress-list":
       return {
-        items: tasks.map((t) => ({ title: t.title, subtitle: t.category, date: t.date, percent: t.percent })),
+        items: tasks.map((t) => ({ id: t.id, title: t.title, subtitle: t.category, date: t.date, percent: t.percent })),
       };
     case "table":
       return {

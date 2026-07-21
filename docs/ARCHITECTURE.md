@@ -234,6 +234,62 @@ on a task list). Changing it writes straight back to that block's
 still local data. `api`-sourced blocks don't get this control, their
 shape comes from whatever the last sync returned.
 
+## Task priority and drag-to-rank
+
+The first place anything in this app mutates the `tasks` collection from
+the UI — every other write is to `Block`/`Settings` state. `Task` carries
+a `priority: number`, a single global manual rank shared across the whole
+app (lower = ranked higher), independent of `date`/`percent`/`name`. It
+exists purely so a person can order their tasks by hand when none of the
+other sorts reflect what actually matters right now.
+
+A `list`/`progress-list` block whose source is `local` + `collection:
+"tasks"` always shows a drag handle and rank-up/rank-down buttons per
+row, regardless of the block's current sort — dragging (or clicking a
+rank button) is never blocked by "wrong sort selected." A drop:
+
+1. Reads every task, sorted by current `priority`.
+2. Walks that full list, substituting the dragged block's *visible* rows
+   (which may be a filtered subset, and may be capped to the top 5, see
+   Row cap below) with their new drop order, leaving every task not
+   currently visible in this block untouched, in its existing relative
+   position around the ones that moved.
+3. Writes the full task list back with recomputed `priority` values
+   (`src/lib/reorderTasks.ts`).
+4. Sets that block's own `source.sort` to `"priority"` through the same
+   `onSourceChange` path the header's Sort dropdown already uses — this
+   is also what makes the UI notice the write: nothing holds `tasks` as
+   React state, so the re-render that picks up the fresh priorities is a
+   side effect of the sort-field change, not a separate mechanism.
+
+Because step 2 merges into the *global* order rather than just the
+visible subset, ranking within one filtered block (e.g. only "Overdue"
+tasks) can pull previously-hidden tasks into a different block's visible
+set the next time it's viewed by priority — this is correct, not a bug:
+priority is one ranking shared by the whole app, not a per-block-instance
+setting.
+
+Every interactive element here has a non-drag equivalent (rank-up/rank-down buttons, always visible, not hover-gated) — native HTML5
+drag-and-drop has no keyboard path, and this app already treats keyboard
+reachability as a baseline (see Keyboard focus in `DESIGN.md`), so the
+buttons aren't optional polish, they're how a keyboard-only person ranks
+a task at all.
+
+This is row-level, inside one block's data — it doesn't touch `Block.order`
+or move anything on the board grid, so it's a different axis from the
+block-position drag-to-position CLAUDE.md's non-negotiables rule out (see
+that file for the distinction spelled out explicitly).
+
+### Row cap
+
+`list`, `progress-list`, and `table` blocks all cap their rendered rows
+to 5 by default, with a "Show N more" / "Show less" toggle when there
+are more. Ephemeral component state, not persisted, not a per-block
+setting — resets on reload, same content-driven-height spirit as
+everything else about block sizing. When a block is collapsed to its
+top 5, only those 5 are draggable; ranking a row currently hidden by the
+cap means expanding first.
+
 ## Personalization
 
 Header greeting is time-of-day (`"Good morning" | "Good afternoon" |

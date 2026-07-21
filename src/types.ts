@@ -13,7 +13,7 @@ export type SourceKind = "local" | "api";
 export interface LocalSource {
   kind: "local";
   collection: "tasks" | "metrics";
-  sort: "date-asc" | "date-desc" | "percent-asc" | "percent-desc" | "name";
+  sort: "date-asc" | "date-desc" | "percent-asc" | "percent-desc" | "name" | "priority";
   filter: "all" | "today" | "this-week" | "overdue" | "in-progress" | "done";
 }
 
@@ -43,10 +43,10 @@ export type StatResult = { value: string; label: string };
 
 export type StatGridResult = { items: { value: string; label: string; delta?: string }[] };
 
-export type ListItem = { title: string; subtitle?: string; date?: string; tag?: string };
+export type ListItem = { id?: string; title: string; subtitle?: string; date?: string; tag?: string };
 export type ListResult = { items: ListItem[] };
 
-export type ProgressItem = { title: string; subtitle?: string; date?: string; percent: number };
+export type ProgressItem = { id?: string; title: string; subtitle?: string; date?: string; percent: number };
 export type ProgressListResult = { items: ProgressItem[] };
 // percent 0 or 100 renders as a checkbox, not a bar, see DESIGN.md.
 // The data doesn't change, only how a row at either extreme is drawn.
@@ -137,6 +137,7 @@ export interface Task {
   date: string;        // ISO date, YYYY-MM-DD
   percent: number;      // 0-100
   category: string;     // free text, e.g. "TRS", "Coursework", "Builds", "Personal"
+  priority: number;     // global manual rank, lower = ranked higher; set by drag-to-rank
 }
 
 // ## Metric (local collection)

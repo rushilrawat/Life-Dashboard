@@ -12,13 +12,13 @@ function addDays(n: number): string {
 }
 
 const tasks: Task[] = [
-  { id: "t1", title: "Ship Phase 2 blocks", note: "", date: addDays(-2), percent: 100, category: "Builds" },
-  { id: "t2", title: "Write project retro", note: "", date: addDays(-5), percent: 40, category: "Personal" },
-  { id: "t3", title: "Review PR feedback", note: "", date: addDays(0), percent: 60, category: "Builds" },
-  { id: "t4", title: "Plan Phase 3", note: "", date: addDays(1), percent: 0, category: "Builds" },
-  { id: "t5", title: "Coursework reading", note: "", date: addDays(3), percent: 0, category: "Coursework" },
-  { id: "t6", title: "Grocery run", note: "", date: addDays(0), percent: 0, category: "Personal" },
-  { id: "t7", title: "Renew passport", note: "", date: addDays(-10), percent: 0, category: "Personal" },
+  { id: "t1", title: "Ship Phase 2 blocks", note: "", date: addDays(-2), percent: 100, category: "Builds", priority: 0 },
+  { id: "t2", title: "Write project retro", note: "", date: addDays(-5), percent: 40, category: "Personal", priority: 1 },
+  { id: "t3", title: "Review PR feedback", note: "", date: addDays(0), percent: 60, category: "Builds", priority: 2 },
+  { id: "t4", title: "Plan Phase 3", note: "", date: addDays(1), percent: 0, category: "Builds", priority: 3 },
+  { id: "t5", title: "Coursework reading", note: "", date: addDays(3), percent: 0, category: "Coursework", priority: 4 },
+  { id: "t6", title: "Grocery run", note: "", date: addDays(0), percent: 0, category: "Personal", priority: 5 },
+  { id: "t7", title: "Renew passport", note: "", date: addDays(-10), percent: 0, category: "Personal", priority: 6 },
 ];
 
 const metrics: Metric[] = [

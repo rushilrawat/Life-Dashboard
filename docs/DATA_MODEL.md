@@ -16,7 +16,7 @@ type SourceKind = "local" | "api";
 interface LocalSource {
   kind: "local";
   collection: "tasks" | "metrics";
-  sort: "date-asc" | "date-desc" | "percent-asc" | "percent-desc" | "name";
+  sort: "date-asc" | "date-desc" | "percent-asc" | "percent-desc" | "name" | "priority";
   filter: "all" | "today" | "this-week" | "overdue" | "in-progress" | "done";
 }
 
@@ -54,11 +54,15 @@ type StatResult = { value: string; label: string };
 
 type StatGridResult = { items: { value: string; label: string; delta?: string }[] };
 
-type ListItem = { title: string; subtitle?: string; date?: string; tag?: string };
+type ListItem = { id?: string; title: string; subtitle?: string; date?: string; tag?: string };
 type ListResult = { items: ListItem[] };
 
-type ProgressItem = { title: string; subtitle?: string; date?: string; percent: number };
+type ProgressItem = { id?: string; title: string; subtitle?: string; date?: string; percent: number };
 type ProgressListResult = { items: ProgressItem[] };
+// id is optional and only meaningful for local, tasks-sourced rows — it's
+// what lets a rendered row trace back to the Task it came from for
+// drag-to-rank (see ARCHITECTURE.md's Task priority section). Absent for
+// api-sourced or metrics-sourced rows, which just render without it.
 // percent 0 or 100 renders as a checkbox, not a bar, see DESIGN.md.
 // The data doesn't change, only how a row at either extreme is drawn.
 
@@ -169,6 +173,7 @@ interface Task {
   date: string;        // ISO date, YYYY-MM-DD
   percent: number;      // 0-100
   category: string;     // free text, e.g. "TRS", "Coursework", "Builds", "Personal"
+  priority: number;     // global manual rank, lower = ranked higher; see ARCHITECTURE.md
 }
 ```
 

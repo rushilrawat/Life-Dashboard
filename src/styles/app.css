@@ -787,6 +787,71 @@
   background: var(--accent);
 }
 
+/* Drag-to-rank (list/progress-list, local tasks source only) — the row
+   itself (.row) is unchanged, this just wraps it with a grip handle and a
+   keyboard-reachable rank-up/down pair, matching the block-level kebab's
+   Move up/down idiom so ranking works without a mouse too. */
+.row-draggable {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.row-drag-handle {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  cursor: grab;
+}
+
+.row-draggable:hover .row-drag-handle {
+  color: var(--text-secondary);
+}
+
+.row-draggable.dragging {
+  opacity: 0.5;
+}
+
+.row-rank-btns {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.row-rank-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.row-rank-btn:hover:not(:disabled) {
+  color: var(--text-secondary);
+}
+
+.row-rank-btn:disabled {
+  color: var(--border-strong);
+  cursor: default;
+}
+
+/* "Show N more" / "Show less" — same scale as .week-more's truncation
+   note, just interactive. */
+.show-more-toggle {
+  background: none;
+  border: none;
+  padding: 6px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.show-more-toggle:hover {
+  color: var(--text-secondary);
+}
+
 /* ── Stat / stat-grid ────────────────────────────────────────────── */
 
 .stat-value {

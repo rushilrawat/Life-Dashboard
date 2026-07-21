@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 import { resolveLocal } from "../lib/resolveLocal";
+import { applyDragOrder } from "../lib/reorderTasks";
 import * as storage from "../lib/storage";
 import type {
   Block,
@@ -30,17 +31,18 @@ import WeekBlock from "./blocks/WeekBlock";
 
 // Dispatch by type only — same result shapes whether they came from
 // resolveLocal() or a sync-cache entry (ARCHITECTURE.md: the block
-// component never knows where its data came from).
-function renderResult(type: Block["type"], result: BlockResult) {
+// component never knows where its data came from). `onReorder` only ever
+// applies to list/progress-list — every other type ignores the third arg.
+function renderResult(type: Block["type"], result: BlockResult, onReorder?: (ids: string[]) => void) {
   switch (type) {
     case "stat":
       return <StatBlock result={result as StatResult} />;
     case "stat-grid":
       return <StatGridBlock result={result as StatGridResult} />;
     case "list":
-      return <ListBlock result={result as ListResult} />;
+      return <ListBlock result={result as ListResult} onReorder={onReorder} />;
     case "progress-list":
-      return <ProgressListBlock result={result as ProgressListResult} />;
+      return <ProgressListBlock result={result as ProgressListResult} onReorder={onReorder} />;
     case "table":
       return <TableBlock result={result as TableResult} />;
     case "chart":
@@ -74,9 +76,20 @@ function resolveBlockData(block: Block): BlockResult | null {
   return resolveLocal(block);
 }
 
+// Drag-to-rank only makes sense for a task-backed local list — nothing to
+// write a manual priority back to for an api-sourced or metrics-sourced
+// block, and table rows aren't reorderable (DESIGN.md/plan scope it out).
+function isDraggableTasksBlock(block: Block): boolean {
+  return (
+    block.source?.kind === "local" &&
+    block.source.collection === "tasks" &&
+    (block.type === "list" || block.type === "progress-list")
+  );
+}
+
 // The one place that resolves a block's source and dispatches to its
 // type's renderer.
-function BlockBody({ block }: { block: Block }) {
+function BlockBody({ block, onReorder }: { block: Block; onReorder?: (ids: string[]) => void }) {
   if (block.type === "text") return <TextBlock blockId={block.id} />;
   if (block.type === "links") return <LinksBlock blockId={block.id} width={block.width} />;
 
@@ -84,7 +97,7 @@ function BlockBody({ block }: { block: Block }) {
   if (!result) {
     return <EmptyState message={block.source?.kind === "api" ? "Not synced yet" : "Source not configured"} />;
   }
-  return renderResult(block.type, result);
+  return renderResult(block.type, result, isDraggableTasksBlock(block) ? onReorder : undefined);
 }
 
 // The kebab-menu callback set for one block at position i within `list` —
@@ -249,6 +262,17 @@ export default function Board({
   const gridBlocks = isOverview ? sorted.filter((b) => !isHeroEligible(b)) : sorted;
   const mutators: BlockMutators = { onEditBlock, onSwapOrder, onSetWidth, onDeleteBlock };
 
+  // Drag (or a rank-up/down click) always applies, regardless of the
+  // block's current sort — a drop writes the new task priorities, then
+  // flips this block's sort to "priority" through the same onSourceChange
+  // path the header dropdown already uses, so the order never snaps back
+  // to whatever date/percent/name sort was showing before.
+  function handleRowReorder(block: Block, ids: string[]) {
+    if (block.source?.kind !== "local") return;
+    applyDragOrder(ids);
+    onSourceChange(block.id, { ...block.source, sort: "priority" });
+  }
+
   return (
     <>
       {heroBlocks.length > 0 && <HeroBand blocks={heroBlocks} mutators={mutators} />}
@@ -260,7 +284,7 @@ export default function Board({
             {...kebabCallbacks(gridBlocks, i, block, mutators)}
             onSourceChange={(source) => onSourceChange(block.id, source)}
           >
-            <BlockBody block={block} />
+            <BlockBody block={block} onReorder={(ids) => handleRowReorder(block, ids)} />
           </BlockCard>
         ))}
         <button className="add-block-tile" type="button" onClick={onAddBlock}>

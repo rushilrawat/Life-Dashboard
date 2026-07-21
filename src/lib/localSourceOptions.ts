@@ -19,4 +19,5 @@ export const SORT_OPTIONS: { value: LocalSource["sort"]; label: string }[] = [
   { value: "percent-desc", label: "Highest %" },
   { value: "percent-asc", label: "Lowest %" },
   { value: "name", label: "Name" },
+  { value: "priority", label: "Priority" },
 ];

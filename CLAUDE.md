@@ -43,6 +43,13 @@ These were cut on purpose after scoping a larger version. Do not add
 them back without a specific new reason, "would be nice" is not one.
 
 - No pixel drag-to-position. Blocks move via up/down controls only.
+  (This governs block position on the board grid. Row-level
+  drag-to-set-priority inside `list`/`progress-list` blocks — see
+  `docs/ARCHITECTURE.md`'s Task priority section — is a different axis
+  entirely, it never touches `Block.order` or the grid, and isn't what
+  this rule is about. It also ships with a full non-drag keyboard
+  equivalent, unlike block reordering which never needed one since
+  Move up/down already was the keyboard-accessible mechanism.)
 - No freeform resize. Width is `"half" | "full"`, height is
   content-driven, never user-set.
 - No custom-code / iframe block type. If a real gap shows up that the
