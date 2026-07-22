@@ -302,11 +302,15 @@
 
 /* ── Board ───────────────────────────────────────────────────────── */
 
-/* Fixed columns, not auto-fit — half needs to reliably mean half. Dense
-   flow backfills gaps left by a full-width card breaking the row instead
-   of leaving them empty, so a normal block set packs onto one screen
-   without scrolling; scroll returns only once there's genuinely more
-   content than fits, per the design ask. */
+/* Fixed columns, not auto-fit — a widthCols value needs to reliably mean
+   the same fraction of the row. Dense flow backfills gaps left by a
+   wide card breaking the row instead of leaving them empty, so a normal
+   block set packs onto one screen without scrolling; scroll returns only
+   once there's genuinely more content than fits, per the design ask.
+   Each card's `grid-column: span N` is set inline (BlockCard.tsx), N
+   clamped against the current breakpoint's column count in JS — there's
+   no fixed-class equivalent left to declare here since widthCols is a
+   continuous 1-4 range, not two named sizes. */
 .board {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -317,12 +321,6 @@
 @media (max-width: 900px) {
   .board {
     grid-template-columns: repeat(2, 1fr);
-  }
-  .card--half {
-    grid-column: span 1;
-  }
-  .card--full {
-    grid-column: span 2;
   }
 }
 
@@ -362,10 +360,6 @@
   .board {
     grid-template-columns: 1fr;
   }
-  .card--half,
-  .card--full {
-    grid-column: span 1;
-  }
   .hero-tile {
     min-width: 50%;
     padding: 18px 14px;
@@ -378,6 +372,7 @@
 /* ── Card shell ──────────────────────────────────────────────────── */
 
 .card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -388,12 +383,38 @@
   min-width: 0;
 }
 
-.card--half {
-  grid-column: span 2;
+.card-body {
+  min-height: 0;
 }
 
-.card--full {
-  grid-column: span 4;
+/* Drag-resize handles (DESIGN.md's Resize handles section) — thin strips
+   on the card's right/bottom edge, invisible until hover so they don't
+   read as chrome on every card at once. Kebab's Wider/Narrower/Taller/
+   Shorter buttons are the keyboard-reachable equivalent, same pattern as
+   the row-level drag-to-rank grip (ARCHITECTURE.md). */
+.resize-handle {
+  position: absolute;
+  background: transparent;
+}
+
+.resize-handle:hover {
+  background: var(--accent-tint);
+}
+
+.resize-handle--width {
+  top: 0;
+  right: -6px;
+  width: 12px;
+  height: 100%;
+  cursor: ew-resize;
+}
+
+.resize-handle--height {
+  left: 0;
+  bottom: -6px;
+  width: 100%;
+  height: 12px;
+  cursor: ns-resize;
 }
 
 .card-header {

@@ -232,6 +232,48 @@ neighbor from the hero-only sub-list instead of the full board, so it
 reorders visibly within the strip instead of silently matching against
 a grid card it isn't rendered next to.
 
+## Resize (width and height)
+
+Grid-snapped, not a freeform pixel/position canvas — a deliberate
+reversal of the original non-negotiable (`CLAUDE.md`), scoped to keep
+CSS Grid as the layout model rather than rewriting the board around
+absolute positioning. `Block.widthCols` (1-4) is the number of the
+board's 4 columns a card spans; `Block.heightPx` is an optional pixel
+override, absent by default (content-driven, as before).
+
+- **Width drag**: a handle on the card's right edge (`BlockCard.tsx`).
+  Dragging measures the card's current pixel width divided by its
+  current `widthCols` to get one column's approximate width, then
+  rounds the drag delta to the nearest whole column, clamped to
+  `1..4`. Live visual feedback during the drag, committed to
+  `Block.widthCols` on pointer-up.
+- **Height drag**: a handle on the card's bottom edge. Dragging from an
+  unset (content-driven) height starts from whatever the card's body is
+  currently rendered at, so there's no jarring jump the first time it's
+  touched. Clamped to a 120px floor. Once set, the card body scrolls
+  internally (`overflow-y: auto`) past that height instead of clipping
+  silently — the header stays fully visible either way, only the body
+  is height-constrained.
+- **Viewport clamping**: `widthCols` is never mutated by the current
+  viewport, only clamped for *display* — `Board.tsx` computes the
+  board's current column count (4 / 2 / 1 at the existing 900px/480px
+  breakpoints) and renders `grid-column: span min(widthCols, maxCols)`.
+  A block stored at `widthCols: 4` still renders full-width at a
+  4-column viewport even if it was last viewed clamped to 2 at a
+  narrower one.
+- **Keyboard equivalent**: kebab's Wider / Narrower (±1 column, clamped
+  1-4) and Taller / Shorter (±40px, floor 120) / Reset height (clears
+  `heightPx` back to content-driven), same "every drag interaction ships
+  a non-drag equivalent" rule the row-level drag-to-rank buttons already
+  established.
+- **Hero band**: a hero-eligible block's kebab still exposes these
+  controls (same reasoning `DESIGN.md`'s Hero band section already gives
+  for keeping width controls there even though hero tiles don't render
+  with a size at all) — they stage `widthCols`/`heightPx` for whenever
+  the block next renders as a regular card (a category filter, or
+  falling out of hero eligibility), with no visible effect on the tile
+  itself in the meantime.
+
 ## Per-block live filter
 
 For a `local`-sourced block, its `sort` and `filter` aren't fixed at
@@ -315,8 +357,10 @@ Every block (except while adding) shows a kebab menu with:
   deleting the block.
 - **Move up / move down** — reorders within the board. This is the only
   positioning mechanism, no drag, no coordinates.
-- **Width: Half / Width: Full** — the only sizing control. No custom
-  width, no height control at all, blocks size to their content.
+- **Wider / Narrower / Taller / Shorter / Reset height** — the
+  keyboard-reachable equivalent of the card's drag-resize handles, see
+  the Resize section above. Not the only sizing mechanism (unlike
+  reordering above) — dragging the card's own edges is the primary one.
 - **Delete** — removes the block and its cached sync data.
 
 ## Add / Edit Block flow
@@ -339,9 +383,11 @@ Three steps, in this order, matching the reference design:
    this step, there's nothing to configure here — embed's one field
    (the URL) is entered on the block itself, same pattern as Links'
    add form, not in this panel.
-3. **Block settings** — title, width (half/full), category (free text
-   with autocomplete from categories already in use, optional, blank
-   means the block only ever shows under Overview).
+3. **Block settings** — title, an initial width (¼/½/¾/Full, fine-tuned
+   later by dragging the card's own edge, see the Resize section),
+   category (free text with autocomplete from categories already in
+   use, optional, blank means the block only ever shows under
+   Overview).
 
 Editing an existing block reopens this same flow pre-filled. Changing
 the block's type mid-edit is not supported, delete and recreate

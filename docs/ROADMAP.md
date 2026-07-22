@@ -204,16 +204,35 @@ there is still no way to iframe an arbitrary URL. See
 and Embed blocks section for the full spec, and `CLAUDE.md`'s
 non-negotiables for the reasoning.
 
+A fifth post-roadmap addition, same session, and the first actual
+*reversal* rather than a scoped exception: freeform resize, at the
+person's explicit request after being told it conflicted with the
+original non-negotiable. `Block.width: "half" | "full"` became
+`Block.widthCols: 1 | 2 | 3 | 4` (columns spanned out of the board's
+4-column grid) plus an optional `Block.heightPx` override. Resize
+stayed grid-snapped rather than fully arbitrary pixel/position — a
+deliberate middle ground, chosen over a full canvas rewrite, that
+keeps CSS Grid, the hero band, and the 900px/480px responsive
+breakpoints all still meaningful. Drag handles on a card's right and
+bottom edges do the resizing; kebab's new Wider/Narrower/Taller/
+Shorter/Reset height buttons are the keyboard-reachable equivalent,
+same pattern as drag-to-rank's rank buttons. See `ARCHITECTURE.md`'s
+Board layout section and `DESIGN.md`'s Resize handles section.
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-
 build, they were cut deliberately, see `CLAUDE.md`:
 
-- Drag-to-position (block layout on the board) or freeform resize —
-  still out of scope. Row-level drag-to-rank *inside* a list/progress-list
-  block's task data (added post-Phase-6, see below) is a different axis
-  and doesn't reverse this; see `CLAUDE.md`'s non-negotiable for the
-  distinction spelled out.
+- Drag-to-position (block layout on the board) — still out of scope,
+  reordering stays the up/down-in-the-kebab mechanism. Row-level
+  drag-to-rank *inside* a list/progress-list block's task data (added
+  post-Phase-6, see below) is a different axis and doesn't reverse
+  this; see `CLAUDE.md`'s non-negotiable for the distinction spelled
+  out. Freeform *resize*, by contrast, was reversed post-roadmap (see
+  below) — the two were cut together originally but aren't the same
+  axis either, and only one of them got a specific new reason to come
+  back.
 - A general-purpose iframe/custom-code block type — still out of
   scope. The curated `embed` primitive (added post-roadmap, allowlisted
   providers only: YouTube, Google Sheets, Figma, Loom) is a different,

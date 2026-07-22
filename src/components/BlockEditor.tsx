@@ -36,10 +36,17 @@ const BLOCK_TYPES: { type: BlockType; label: string; icon: typeof Hash }[] = [
 
 const NO_SOURCE: BlockType[] = ["text", "links", "embed"];
 
+const WIDTH_OPTIONS: { cols: Block["widthCols"]; label: string }[] = [
+  { cols: 1, label: "¼" },
+  { cols: 2, label: "½" },
+  { cols: 3, label: "¾" },
+  { cols: 4, label: "Full" },
+];
+
 export interface BlockFormData {
   type: BlockType;
   title: string;
-  width: "half" | "full";
+  widthCols: Block["widthCols"];
   category?: string;
   source?: LocalSource | ApiSource;
 }
@@ -66,7 +73,7 @@ export default function BlockEditor({ mode, initial, categoriesInUse, connectors
   );
   const [api, setApi] = useState<ApiSource>(initial?.source?.kind === "api" ? initial.source : defaultApi);
   const [title, setTitle] = useState(initial?.title ?? "");
-  const [width, setWidth] = useState<"half" | "full">(initial?.width ?? "half");
+  const [widthCols, setWidthCols] = useState<Block["widthCols"]>(initial?.widthCols ?? 2);
   const [category, setCategory] = useState(initial?.category ?? "");
 
   const isEdit = mode === "edit";
@@ -118,7 +125,7 @@ export default function BlockEditor({ mode, initial, categoriesInUse, connectors
     onSave({
       type,
       title: title.trim(),
-      width,
+      widthCols,
       category: category.trim() || undefined,
       source: needsSource ? (sourceKind === "local" ? local : api) : undefined,
     });
@@ -259,13 +266,18 @@ export default function BlockEditor({ mode, initial, categoriesInUse, connectors
               <label>
                 Width
                 <div className="segmented">
-                  <button type="button" className={width === "half" ? "active" : ""} onClick={() => setWidth("half")}>
-                    Half
-                  </button>
-                  <button type="button" className={width === "full" ? "active" : ""} onClick={() => setWidth("full")}>
-                    Full
-                  </button>
+                  {WIDTH_OPTIONS.map((o) => (
+                    <button
+                      key={o.cols}
+                      type="button"
+                      className={widthCols === o.cols ? "active" : ""}
+                      onClick={() => setWidthCols(o.cols)}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
                 </div>
+                <p className="editor-hint">Drag a card's edge on the board to fine-tune width and height anytime.</p>
               </label>
               <label>
                 Category

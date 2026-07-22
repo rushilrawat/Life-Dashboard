@@ -55,8 +55,8 @@ export default function App() {
     });
   }
 
-  function setWidth(id: string, width: Block["width"]) {
-    setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, width } : b)));
+  function resizeBlock(id: string, widthCols: Block["widthCols"], heightPx: number | undefined) {
+    setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, widthCols, heightPx } : b)));
   }
 
   function deleteBlock(id: string) {
@@ -144,7 +144,7 @@ export default function App() {
           onAddBlock={() => setEditor({ mode: "add" })}
           onEditBlock={(block) => setEditor({ mode: "edit", block })}
           onSwapOrder={swapOrder}
-          onSetWidth={setWidth}
+          onResizeBlock={resizeBlock}
           onDeleteBlock={deleteBlock}
           onSourceChange={updateSource}
         />

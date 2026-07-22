@@ -1,6 +1,7 @@
 import type {
   Block,
   EmbedBlockData,
+  Group,
   LinksBlockData,
   Metric,
   NoteBlockData,
@@ -14,6 +15,7 @@ import type {
 
 interface KeyValues {
   blocks: Block[];
+  groups: Group[];
   tasks: Task[];
   metrics: Metric[];
   settings: Settings;

@@ -1,4 +1,5 @@
 import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { resolveLocal } from "../lib/resolveLocal";
 import { applyDragOrder } from "../lib/reorderTasks";
 import * as storage from "../lib/storage";
@@ -29,6 +30,28 @@ import StatGridBlock from "./blocks/StatGridBlock";
 import TableBlock from "./blocks/TableBlock";
 import TextBlock from "./blocks/TextBlock";
 import WeekBlock from "./blocks/WeekBlock";
+
+const MIN_HEIGHT_PX = 120;
+
+// The board's column count at the current viewport (ARCHITECTURE.md/
+// DESIGN.md's 900px/480px breakpoints) — a block's stored `widthCols`
+// clamps down against this at render time, never mutated by it, so a
+// 4-wide block reverts to 4-wide once the viewport widens again.
+function boardMaxCols(): number {
+  if (window.innerWidth <= 480) return 1;
+  if (window.innerWidth <= 900) return 2;
+  return 4;
+}
+
+function useBoardMaxCols(): number {
+  const [maxCols, setMaxCols] = useState(boardMaxCols);
+  useEffect(() => {
+    const onResize = () => setMaxCols(boardMaxCols());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return maxCols;
+}
 
 // Dispatch by type only — same result shapes whether they came from
 // resolveLocal() or a sync-cache entry (ARCHITECTURE.md: the block
@@ -92,7 +115,7 @@ function isDraggableTasksBlock(block: Block): boolean {
 // type's renderer.
 function BlockBody({ block, onReorder }: { block: Block; onReorder?: (ids: string[]) => void }) {
   if (block.type === "text") return <TextBlock blockId={block.id} />;
-  if (block.type === "links") return <LinksBlock blockId={block.id} width={block.width} />;
+  if (block.type === "links") return <LinksBlock blockId={block.id} widthCols={block.widthCols} />;
   if (block.type === "embed") return <EmbedBlock blockId={block.id} />;
 
   const result = resolveBlockData(block);
@@ -112,11 +135,11 @@ interface KebabCallbacks {
   onMoveDown: () => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
-  onSetWidth: (width: Block["width"]) => void;
+  onResize: (widthCols: Block["widthCols"], heightPx: number | undefined) => void;
   onDelete: () => void;
 }
 
-type BlockMutators = Pick<Props, "onEditBlock" | "onSwapOrder" | "onSetWidth" | "onDeleteBlock">;
+type BlockMutators = Pick<Props, "onEditBlock" | "onSwapOrder" | "onResizeBlock" | "onDeleteBlock">;
 
 function kebabCallbacks(list: Block[], i: number, block: Block, mutators: BlockMutators): KebabCallbacks {
   return {
@@ -125,8 +148,30 @@ function kebabCallbacks(list: Block[], i: number, block: Block, mutators: BlockM
     onMoveDown: () => mutators.onSwapOrder(block.id, list[i + 1].id),
     canMoveUp: i > 0,
     canMoveDown: i < list.length - 1,
-    onSetWidth: (width) => mutators.onSetWidth(block.id, width),
+    onResize: (widthCols, heightPx) => mutators.onResizeBlock(block.id, widthCols, heightPx),
     onDelete: () => mutators.onDeleteBlock(block.id),
+  };
+}
+
+// Hero tiles have no rendered content box to measure a "current" height
+// from the way a regular card's drag handle can (BlockCard.tsx), so
+// "Taller" from a hero kebab starts from the same fixed floor a fresh
+// explicit height would. Resize here has no visible effect on the tile
+// itself (DESIGN.md never gave hero tiles a width/height treatment) — it
+// only stages the value for whenever this block next renders as a regular
+// card (a category filter, or falling out of hero eligibility), same
+// reasoning DESIGN.md already gives for keeping width controls in the
+// hero kebab at all.
+function heroResizeProps(block: Block, onResize: KebabCallbacks["onResize"]) {
+  return {
+    widthCols: block.widthCols,
+    heightPx: block.heightPx,
+    onWiden: () => onResize(Math.min(4, block.widthCols + 1) as Block["widthCols"], block.heightPx),
+    onNarrow: () => onResize(Math.max(1, block.widthCols - 1) as Block["widthCols"], block.heightPx),
+    onTaller: () => onResize(block.widthCols, (block.heightPx ?? MIN_HEIGHT_PX) + 40),
+    onShorter: () =>
+      block.heightPx && onResize(block.widthCols, Math.max(MIN_HEIGHT_PX, block.heightPx - 40)),
+    onResetHeight: () => onResize(block.widthCols, undefined),
   };
 }
 
@@ -147,7 +192,7 @@ function HeroTile({ value, label, delta }: { value: string; label: string; delta
 // One hero-eligible block's cluster of tiles: a `stat` block is one tile
 // labeled with the block's own title, a `stat-grid` block flattens into one
 // tile per item, each labeled with that item's own label. One shared kebab
-// per block, not per tile — edit/move/width/delete still act on the block.
+// per block, not per tile — edit/move/resize/delete still act on the block.
 // `stale` mirrors BlockCard's own stale-sync indicator — the same "last
 // sync failed" signal applies here too, not just to regular cards.
 function HeroBlockCluster({
@@ -180,7 +225,15 @@ function HeroBlockCluster({
           </span>
         )}
         <div className="hero-kebab">
-          <KebabMenu {...kebab} width={block.width} />
+          <KebabMenu
+            onEdit={kebab.onEdit}
+            onMoveUp={kebab.onMoveUp}
+            onMoveDown={kebab.onMoveDown}
+            canMoveUp={kebab.canMoveUp}
+            canMoveDown={kebab.canMoveDown}
+            onDelete={kebab.onDelete}
+            {...heroResizeProps(block, kebab.onResize)}
+          />
         </div>
       </div>
     </div>
@@ -211,7 +264,15 @@ function HeroBand({ blocks, mutators }: { blocks: Block[]; mutators: BlockMutato
               </div>
               <div className="hero-block-meta">
                 <div className="hero-kebab">
-                  <KebabMenu {...kebab} width={block.width} />
+                  <KebabMenu
+                    onEdit={kebab.onEdit}
+                    onMoveUp={kebab.onMoveUp}
+                    onMoveDown={kebab.onMoveDown}
+                    canMoveUp={kebab.canMoveUp}
+                    canMoveDown={kebab.canMoveDown}
+                    onDelete={kebab.onDelete}
+                    {...heroResizeProps(block, kebab.onResize)}
+                  />
                 </div>
               </div>
             </div>
@@ -240,7 +301,7 @@ interface Props {
   onAddBlock: () => void;
   onEditBlock: (block: Block) => void;
   onSwapOrder: (idA: string, idB: string) => void;
-  onSetWidth: (id: string, width: Block["width"]) => void;
+  onResizeBlock: (id: string, widthCols: Block["widthCols"], heightPx: number | undefined) => void;
   onDeleteBlock: (id: string) => void;
   onSourceChange: (id: string, source: LocalSource) => void;
 }
@@ -251,10 +312,11 @@ export default function Board({
   onAddBlock,
   onEditBlock,
   onSwapOrder,
-  onSetWidth,
+  onResizeBlock,
   onDeleteBlock,
   onSourceChange,
 }: Props) {
+  const maxCols = useBoardMaxCols();
   const sorted = [...blocks].sort((a, b) => a.order - b.order);
   // Hero-eligible blocks only promote out of the grid on Overview — a
   // category filter is a slice of the board, not the glanceable-summary
@@ -262,7 +324,7 @@ export default function Board({
   // cards, same as every other type.
   const heroBlocks = isOverview ? sorted.filter(isHeroEligible) : [];
   const gridBlocks = isOverview ? sorted.filter((b) => !isHeroEligible(b)) : sorted;
-  const mutators: BlockMutators = { onEditBlock, onSwapOrder, onSetWidth, onDeleteBlock };
+  const mutators: BlockMutators = { onEditBlock, onSwapOrder, onResizeBlock, onDeleteBlock };
 
   // Drag (or a rank-up/down click) always applies, regardless of the
   // block's current sort — a drop writes the new task priorities, then
@@ -283,6 +345,7 @@ export default function Board({
           <BlockCard
             key={block.id}
             block={block}
+            maxCols={maxCols}
             {...kebabCallbacks(gridBlocks, i, block, mutators)}
             onSourceChange={(source) => onSourceChange(block.id, source)}
           >

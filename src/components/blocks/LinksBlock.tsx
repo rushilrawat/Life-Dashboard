@@ -28,7 +28,7 @@ function LinkRow({ link }: { link: Link }) {
   );
 }
 
-export default function LinksBlock({ blockId, width }: { blockId: string; width: "half" | "full" }) {
+export default function LinksBlock({ blockId, widthCols }: { blockId: string; widthCols: number }) {
   const key = `blockdata:${blockId}` as const;
   const [data, setData] = useState<LinksBlockData>(
     () => (storage.get(key) as LinksBlockData | null) ?? { links: [] },
@@ -64,7 +64,7 @@ export default function LinksBlock({ blockId, width }: { blockId: string; width:
       {groups.length === 0 ? (
         <EmptyState message="No links yet" />
       ) : (
-        <div className={width === "full" ? "links-columns" : "links-stacked"}>
+        <div className={widthCols >= 3 ? "links-columns" : "links-stacked"}>
           {groups.map(([cat, links]) => (
             <div key={cat}>
               <div className="links-group-label">{cat}</div>

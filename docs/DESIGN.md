@@ -115,17 +115,19 @@ jitter in width as they update.
 ## Layout
 
 - Board is a fixed 4-column grid (`repeat(4, 1fr)`) with
-  `grid-auto-flow: dense` so a full-width card breaking the row doesn't
-  leave a gap behind it — a normal block set packs onto one screen
-  instead of scrolling from wasted space. `half` spans 2 of the 4
-  columns (a true half, not whatever an `auto-fit` grid happened to
-  land on), `full` spans all 4. Below 900px width: 2 columns (`half`
-  spans 1, `full` spans 2). Below 480px: 1 column, both widths collapse
-  to it — there's no room left to justify a second column.
+  `grid-auto-flow: dense` so a wide card breaking the row doesn't leave
+  a gap behind it — a normal block set packs onto one screen instead of
+  scrolling from wasted space. A card's `widthCols` (1-4) is how many of
+  the 4 columns it spans, drag-resizable (see Resize handles, below) —
+  not just two named sizes anymore, a continuous 1-4 range. Below 900px
+  width: 2 columns, a stored `widthCols` clamps down to `min(widthCols,
+  2)` for display only, the stored value is untouched. Below 480px: 1
+  column, everything clamps to it — there's no room left to justify a
+  second column either way.
 - Card: `--surface` background, `1px solid var(--border)`, 12px
   radius, 16px padding. No shadows, flat only, dark surfaces don't need
   elevation cues the way light ones do, contrast against `--bg` is
-  enough.
+  enough. `position: relative`, to anchor the resize handles.
 - Card header: title (15px/600) on the left, block-specific meta (a
   count, a fraction like "1/2") plus the edit pencil and kebab menu on
   the right, all inline, all vertically centered.
@@ -194,6 +196,27 @@ dropdowns `local`-sourced cards normally get in their header (see
 Layout, below). Two inline `<select>`s on top of a big number undercuts
 the point of the treatment. Quick-adjust is still available, just one
 click further away via Edit Block — a real trade-off, not an oversight.
+
+## Resize handles
+
+Two thin invisible-until-hover strips per card (`ARCHITECTURE.md`'s
+Resize section), `--accent-tint` on hover so they read as interactive
+without adding chrome to every card at once when nothing's being
+resized:
+
+- **Width**: a 12px vertical strip on the card's right edge, `cursor:
+  ew-resize`, centered on the card's border (extends slightly past it
+  rather than sitting fully inside, so it doesn't eat into the card's
+  own content padding).
+- **Height**: a 12px horizontal strip on the card's bottom edge,
+  `cursor: ns-resize`, same treatment.
+
+No corner handle combining both — width and height are independent
+drags, dragging diagonally would be ambiguous about which axis is
+meant. Height, once set, makes the card body (everything beneath the
+header) scroll internally past that height rather than clipping
+silently; the header — title, filter/sort dropdowns, edit pencil,
+kebab — always stays fully visible regardless of a height override.
 
 ## Row anatomy (list, progress-list, table)
 
@@ -397,7 +420,11 @@ Block type picker is a 4-column icon grid (twelve tiles, three even
 rows), each tile `--surface`/`--border` default,
 `--accent-tint` background with `--accent` border when selected. The
 Local/Connected-service toggle is a two-segment control, same selected
-treatment. When Connected service is active: a connector dropdown, then
+treatment. Block settings' Width is a four-segment control (¼/½/¾/Full,
+same `.segmented` treatment), just the starting size — a muted one-line
+hint beneath it points at the card's own drag handles for fine-tuning
+afterward, since this is only ever an initial value now, not the only
+way to set it. When Connected service is active: a connector dropdown, then
 a capability dropdown that populates once a connector's chosen (empty
 and disabled until then, filtered to capabilities matching the block's
 type), then that capability's param fields render below as plain

@@ -31,12 +31,20 @@ interface Block {
   id: string;
   type: BlockType;
   title: string;
-  width: "half" | "full";
+  widthCols: 1 | 2 | 3 | 4;   // columns spanned out of the board's 4-column grid, drag-resizable
+  heightPx?: number;          // user-set height override (drag-resizable); absent = content-driven
   order: number;
   category?: string;      // free text, drives the sidebar filter chips, blank = only shows under "Overview"
   source?: LocalSource | ApiSource;   // absent for "text", "links", and "embed"
 }
 ```
+
+`widthCols` and `heightPx` are the one reversal (not just a scoped
+exception, unlike `embed`) of a documented non-negotiable — see
+`CLAUDE.md`'s Resize bullet for why this was allowed back in. Resize
+stays grid-snapped: width always resolves to a whole number of the
+board's columns, height is a real pixel value with internal scroll past
+it, never a fully arbitrary pixel/position canvas.
 
 `filter` and `sort` on a `local` source aren't fixed at creation, the
 block header exposes a small dropdown for both (see `DESIGN.md`) that

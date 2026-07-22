@@ -28,7 +28,8 @@ export interface Block {
   id: string;
   type: BlockType;
   title: string;
-  width: "half" | "full";
+  widthCols: 1 | 2 | 3 | 4;   // columns spanned out of the board's 4-column grid, drag-resizable
+  heightPx?: number;          // user-set height override (drag-resizable); absent = content-driven
   order: number;
   category?: string;      // free text, drives the sidebar filter chips, blank = only shows under "Overview"
   source?: LocalSource | ApiSource;   // absent for "text", "links", and "embed"
@@ -187,6 +188,24 @@ export type EmbedProvider = "youtube" | "google-sheets" | "figma" | "loom";
 export interface EmbedBlockData {
   url: string;             // the original URL the person pasted
   provider: EmbedProvider;
+}
+
+// ## Group (collapsible section holding several blocks)
+//
+// Always full board width, never resized itself. `blockIds` is display
+// order *within* the group — a grouped block's own `order` goes unused
+// (superseded by this array) until it's ungrouped, at which point it's
+// slotted back into the top-level sequence. `order` here shares the same
+// numeric space as `Block.order` for top-level board position: the board's
+// top-level items are groups and ungrouped blocks together, sorted by
+// whichever of the two `order` fields applies, see ARCHITECTURE.md.
+
+export interface Group {
+  id: string;
+  title: string;
+  blockIds: string[];
+  collapsed: boolean;
+  order: number;
 }
 
 // ## Settings
