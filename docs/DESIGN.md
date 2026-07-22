@@ -218,6 +218,43 @@ header) scroll internally past that height rather than clipping
 silently; the header — title, filter/sort dropdowns, edit pencil,
 kebab — always stays fully visible regardless of a height override.
 
+## Groups
+
+A group reuses `.card`'s exact box treatment (`--surface`, `1px solid
+var(--border)`, 12px radius, 16px padding) — same visual language as
+every other board item, not a second container style. Always spans the
+board's full current column count.
+
+- **Header**: chevron toggle (`ChevronDown` expanded / `ChevronRight`
+  collapsed, `lucide-react`, matching the outline-icon rule) leading,
+  then the title at the same 15px/600 weight as a card's own title
+  (click anywhere on it to rename in place — text cursor on hover signals
+  this), then a small `--text-muted` "N blocks" count, then the group's
+  own kebab, right-aligned — same header anatomy as a regular card,
+  just with a collapse toggle in place of the local filter/sort
+  dropdowns (a group has no source of its own to filter/sort).
+  Collapsed: only this header row renders, no divider beneath it since
+  there's nothing to divide from.
+- **Body** (expanded only): the group's members lay out in their own
+  nested 4-column dense grid, identical rules to the board's own grid
+  (same responsive breakpoints, same `12px` gap) — a member card's own
+  `widthCols`/`heightPx` and resize handles work exactly as they do at
+  the top level, nothing about being grouped changes a card's own
+  rendering.
+- **Group-picker control**: a small icon button on every regular card,
+  next to the edit pencil (left of it, right of the local filter/sort
+  dropdowns when present) — `FolderInput` icon when ungrouped, opens a
+  dropdown (same `.kebab-dropdown` treatment as the kebab menu) listing
+  existing groups as plain rows plus a "New group name" text input +
+  "Create" button beneath a divider. `FolderMinus` icon when already
+  grouped — a single click, no dropdown, since removing is the only
+  option at that point.
+- **Delete confirmation**: same inline-swap-the-row pattern as
+  Settings' connector delete-with-usage-warning, not a native
+  `confirm()` — the kebab's dropdown content swaps to "Delete the
+  blocks inside too?" with two choices, "Keep blocks, ungroup" (plain)
+  and "Delete group and blocks" (`--danger`).
+
 ## Row anatomy (list, progress-list, table)
 
 The failure mode to design against: a card that's just lines of text

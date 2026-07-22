@@ -219,6 +219,21 @@ Shorter/Reset height buttons are the keyboard-reachable equivalent,
 same pattern as drag-to-rank's rank buttons. See `ARCHITECTURE.md`'s
 Board layout section and `DESIGN.md`'s Resize handles section.
 
+A sixth post-roadmap addition, same session: box groups, a new `Group`
+concept (not a block type) letting several blocks collapse and move as
+one named section. Assignment lives on the block itself (a small
+`GroupPicker` control next to the kebab, not folded into it, so the
+kebab component shared with the hero band stays untouched), not routed
+through Settings — consistent with the existing block-level-actions
+rule even though a group is a new kind of thing. Top-level board order
+interleaves ungrouped blocks and groups by sharing one `order`
+namespace between `Block` and `Group`; within a group, order is just
+`blockIds`' own array order. Grouped blocks are never hero-eligible
+regardless of type, and a group with no member surviving the active
+category filter simply doesn't render, same as an ordinary filtered-out
+block. See `ARCHITECTURE.md`'s Groups section and `DESIGN.md`'s Groups
+section for the full spec.
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-

@@ -1,6 +1,8 @@
 import { ArrowDown, ArrowUp, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import GroupPicker from "./GroupPicker";
+import type { GroupControls } from "./GroupPicker";
 import { FILTER_OPTIONS, SORT_OPTIONS } from "../lib/localSourceOptions";
 import * as storage from "../lib/storage";
 import type { Block, LocalSource } from "../types";
@@ -26,6 +28,7 @@ interface Props {
   onResize: (widthCols: Block["widthCols"], heightPx: number | undefined) => void;
   onDelete: () => void;
   onSourceChange: (source: LocalSource) => void;
+  groupControls: GroupControls;
 }
 
 interface KebabProps {
@@ -135,6 +138,7 @@ export default function BlockCard({
   onResize,
   onDelete,
   onSourceChange,
+  groupControls,
 }: Props) {
   const local = block.source?.kind === "local" ? block.source : null;
   const syncCache = block.source?.kind === "api" ? storage.get(`sync-cache:${block.id}`) : null;
@@ -241,6 +245,7 @@ export default function BlockCard({
               </select>
             </>
           )}
+          <GroupPicker {...groupControls} />
           <button className="icon-btn" type="button" aria-label="Edit block" onClick={onEdit}>
             <Pencil size={15} />
           </button>

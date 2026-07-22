@@ -120,7 +120,10 @@ them back without a specific new reason, "would be nice" is not one.
   `src/components/blocks/`. `BlockCard.tsx` (the shared card shell) and
   `Board.tsx` (resolves each block's data and dispatches to its type)
   live one level up in `src/components/`, since neither is itself a
-  block type.
+  block type. `GroupSection.tsx` (the collapsible-section shell) and
+  `GroupPicker.tsx` (a block's own add-to-group/remove-from-group
+  control) live there too, same reasoning — a group isn't a block type
+  either.
 - The one local-source resolver is `resolveLocal()` in
   `src/lib/resolveLocal.ts` — every local-sourced block's data goes
   through it, no per-block bespoke storage reads. First-run sample
@@ -143,7 +146,10 @@ them back without a specific new reason, "would be nice" is not one.
   only component holding `blocks` state; children only ever call back
   up to it. Reordering swaps the `order` field between two block ids
   rather than taking a direction, so it works the same whether
-  Overview or a category filter is the active view.
+  Overview or a category filter is the active view. Group CRUD (add/
+  rename/delete/reorder/collapse, plus moving a block in or out of one)
+  lives there too, alongside the only component holding `groups` state —
+  same pattern, see `ARCHITECTURE.md`'s Groups section.
 - Types live in `src/types.ts`, mirror `DATA_MODEL.md` exactly, if the
   doc and the code drift, fix the code.
 - No inline styles except values computed at runtime (derived accent

@@ -241,6 +241,29 @@ allowlist is rejected at input time — see `CLAUDE.md`'s iframe
 non-negotiable for why this stays a curated primitive, not a general
 "embed any URL" hatch.
 
+## Group (collapsible section holding several blocks)
+
+```ts
+interface Group {
+  id: string;
+  title: string;
+  blockIds: string[];
+  collapsed: boolean;
+  order: number;
+}
+```
+
+`blockIds` is display order *within* the group, not `Block.order` — a
+grouped block's own `order` goes unused until it's ungrouped, at which
+point it's given a fresh one so it reappears at the end of the board
+rather than wherever its stale pre-grouping value happens to sort to.
+`order` here shares the same numeric space as `Block.order` for
+top-level board position: the board's top-level items are groups and
+ungrouped blocks together, sorted by whichever of the two `order`
+fields applies. See `ARCHITECTURE.md`'s Groups section for the full
+behavior (block-level assignment, category-filter interaction,
+hero-band exclusion, delete-vs-ungroup).
+
 ## Settings
 
 ```ts
@@ -291,6 +314,7 @@ interface SyncCacheEntry {
 | Key                     | Value                                    |
 |--------------------------|-------------------------------------------|
 | `blocks`                 | `Block[]`                                 |
+| `groups`                 | `Group[]`                                 |
 | `tasks`                  | `Task[]`                                  |
 | `metrics`                | `Metric[]`                                |
 | `blockdata:<blockId>`    | `NoteBlockData`, `LinksBlockData`, or `EmbedBlockData` |

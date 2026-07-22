@@ -516,6 +516,71 @@
   color: var(--danger);
 }
 
+.group-picker-dropdown {
+  min-width: 200px;
+}
+
+.group-picker-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 2px;
+}
+
+.group-picker-form {
+  display: flex;
+  gap: 6px;
+  padding: 4px 2px 2px;
+}
+
+.group-picker-form .text-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.group-delete-hint {
+  padding: 4px 10px 8px;
+  margin: 0;
+}
+
+/* ── Groups ──────────────────────────────────────────────────────── */
+
+/* .group-section reuses .card's box treatment (background/border/radius/
+   padding/gap) directly rather than redeclaring it — same visual language,
+   just a different semantic wrapper. */
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.group-collapse-toggle {
+  flex-shrink: 0;
+}
+
+.group-title {
+  cursor: text;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-title-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 4px 8px;
+}
+
+.group-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
 /* ── Add Block tile ──────────────────────────────────────────────── */
 
 .add-block-tile {

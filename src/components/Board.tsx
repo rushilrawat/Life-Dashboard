@@ -8,6 +8,7 @@ import type {
   BlockResult,
   BreakdownResult,
   ChartResult,
+  Group,
   HeatmapResult,
   ListResult,
   LocalSource,
@@ -18,6 +19,8 @@ import type {
   WeekResult,
 } from "../types";
 import BlockCard, { EmptyState, KebabMenu, timeAgo } from "./BlockCard";
+import type { GroupControls } from "./GroupPicker";
+import GroupSection from "./GroupSection";
 import BreakdownBlock from "./blocks/BreakdownBlock";
 import ChartBlock from "./blocks/ChartBlock";
 import EmbedBlock from "./blocks/EmbedBlock";
@@ -85,7 +88,10 @@ function renderResult(type: Block["type"], result: BlockResult, onReorder?: (ids
 // A block is hero-eligible if it's a stat or stat-grid type — the only two
 // shapes compact enough for the big-number band. Checked in exactly one
 // place so the promote-filter and the exclude-filter can't drift apart if a
-// third hero-eligible type is ever added.
+// third hero-eligible type is ever added. Grouped blocks are never hero-
+// eligible regardless of type (see Board's ungroupedBlocks split below) —
+// grouping something is an explicit choice to keep it with its group, hero
+// promotion would silently defeat that.
 function isHeroEligible(block: Block): boolean {
   return block.type === "stat" || block.type === "stat-grid";
 }
@@ -125,10 +131,19 @@ function BlockBody({ block, onReorder }: { block: Block; onReorder?: (ids: strin
   return renderResult(block.type, result, isDraggableTasksBlock(block) ? onReorder : undefined);
 }
 
-// The kebab-menu callback set for one block at position i within `list` —
-// shared by the grid map and the hero-band map so the neighbor-index math
-// (move up/down against list[i±1]) lives in exactly one place instead of
-// being hand-repeated per view.
+// Generic neighbor-index move callbacks against any ordered `{id}` list —
+// shared by top-level board order (blocks and groups together) and
+// within-group order (a group's own blockIds), so the "swap with list[i±1]"
+// math lives in exactly one place regardless of which list it's applied to.
+function neighborMove(list: { id: string }[], i: number, onSwap: (idA: string, idB: string) => void) {
+  return {
+    onMoveUp: () => onSwap(list[i].id, list[i - 1].id),
+    onMoveDown: () => onSwap(list[i].id, list[i + 1].id),
+    canMoveUp: i > 0,
+    canMoveDown: i < list.length - 1,
+  };
+}
+
 interface KebabCallbacks {
   onEdit: () => void;
   onMoveUp: () => void;
@@ -137,20 +152,6 @@ interface KebabCallbacks {
   canMoveDown: boolean;
   onResize: (widthCols: Block["widthCols"], heightPx: number | undefined) => void;
   onDelete: () => void;
-}
-
-type BlockMutators = Pick<Props, "onEditBlock" | "onSwapOrder" | "onResizeBlock" | "onDeleteBlock">;
-
-function kebabCallbacks(list: Block[], i: number, block: Block, mutators: BlockMutators): KebabCallbacks {
-  return {
-    onEdit: () => mutators.onEditBlock(block),
-    onMoveUp: () => mutators.onSwapOrder(block.id, list[i - 1].id),
-    onMoveDown: () => mutators.onSwapOrder(block.id, list[i + 1].id),
-    canMoveUp: i > 0,
-    canMoveDown: i < list.length - 1,
-    onResize: (widthCols, heightPx) => mutators.onResizeBlock(block.id, widthCols, heightPx),
-    onDelete: () => mutators.onDeleteBlock(block.id),
-  };
 }
 
 // Hero tiles have no rendered content box to measure a "current" height
@@ -241,17 +242,34 @@ function HeroBlockCluster({
 }
 
 // Overview-only glanceable strip (DESIGN.md's Hero band section): every
-// stat/stat-grid block, promoted out of the regular grid. Move up/down swaps
-// order with the neighbor within this same list, so reordering a hero tile
-// shuffles it among other hero tiles, not silently against an invisible
-// grid-card neighbor. A block whose data hasn't resolved yet still renders —
-// as a compact tile with a working kebab — so it's never unreachable the way
-// a plain `return null` would leave it (no card anywhere, on Overview or off).
-function HeroBand({ blocks, mutators }: { blocks: Block[]; mutators: BlockMutators }) {
+// ungrouped stat/stat-grid block, promoted out of the regular grid. Move
+// up/down swaps order with the neighbor within this same list, so
+// reordering a hero tile shuffles it among other hero tiles, not silently
+// against an invisible grid-card neighbor. A block whose data hasn't
+// resolved yet still renders — as a compact tile with a working kebab — so
+// it's never unreachable the way a plain `return null` would leave it.
+function HeroBand({
+  blocks,
+  onEditBlock,
+  onSwapOrder,
+  onResizeBlock,
+  onDeleteBlock,
+}: {
+  blocks: Block[];
+  onEditBlock: (block: Block) => void;
+  onSwapOrder: (idA: string, idB: string) => void;
+  onResizeBlock: (id: string, widthCols: Block["widthCols"], heightPx: number | undefined) => void;
+  onDeleteBlock: (id: string) => void;
+}) {
   return (
     <div className="hero-band">
       {blocks.map((block, i) => {
-        const kebab = kebabCallbacks(blocks, i, block, mutators);
+        const kebab: KebabCallbacks = {
+          onEdit: () => onEditBlock(block),
+          ...neighborMove(blocks, i, onSwapOrder),
+          onResize: (w, h) => onResizeBlock(block.id, w, h),
+          onDelete: () => onDeleteBlock(block.id),
+        };
         const result = resolveBlockData(block);
 
         if (!result) {
@@ -297,6 +315,7 @@ function HeroBand({ blocks, mutators }: { blocks: Block[]; mutators: BlockMutato
 
 interface Props {
   blocks: Block[];
+  groups: Group[];
   isOverview: boolean;
   onAddBlock: () => void;
   onEditBlock: (block: Block) => void;
@@ -304,10 +323,22 @@ interface Props {
   onResizeBlock: (id: string, widthCols: Block["widthCols"], heightPx: number | undefined) => void;
   onDeleteBlock: (id: string) => void;
   onSourceChange: (id: string, source: LocalSource) => void;
+  onSwapWithinGroup: (groupId: string, idA: string, idB: string) => void;
+  onCreateGroupWithBlock: (blockId: string, title: string) => void;
+  onAddBlockToGroup: (blockId: string, groupId: string) => void;
+  onRemoveBlockFromGroup: (blockId: string) => void;
+  onRenameGroup: (groupId: string, title: string) => void;
+  onToggleGroupCollapsed: (groupId: string) => void;
+  onDeleteGroup: (groupId: string, alsoDeleteBlocks: boolean) => void;
 }
+
+type TopLevelEntry =
+  | { kind: "block"; id: string; order: number; block: Block }
+  | { kind: "group"; id: string; order: number; group: Group; members: Block[] };
 
 export default function Board({
   blocks,
+  groups,
   isOverview,
   onAddBlock,
   onEditBlock,
@@ -315,16 +346,42 @@ export default function Board({
   onResizeBlock,
   onDeleteBlock,
   onSourceChange,
+  onSwapWithinGroup,
+  onCreateGroupWithBlock,
+  onAddBlockToGroup,
+  onRemoveBlockFromGroup,
+  onRenameGroup,
+  onToggleGroupCollapsed,
+  onDeleteGroup,
 }: Props) {
   const maxCols = useBoardMaxCols();
-  const sorted = [...blocks].sort((a, b) => a.order - b.order);
+
+  // `blocks` here is already category-filtered (App.tsx). Looking a group's
+  // blockIds up against this same filtered array means a group with no
+  // member surviving the filter just disappears, and one with some matching
+  // members shows only those — the same "filtered out means not rendered"
+  // rule an ordinary block already follows, extended to groups for free.
+  const groupedIds = new Set(groups.flatMap((g) => g.blockIds));
+  const ungroupedBlocks = blocks.filter((b) => !groupedIds.has(b.id));
+  const visibleGroups = groups
+    .map((g) => ({ group: g, members: g.blockIds.map((id) => blocks.find((b) => b.id === id)).filter((b): b is Block => !!b) }))
+    .filter((vg) => vg.members.length > 0);
+
+  const sortedUngrouped = [...ungroupedBlocks].sort((a, b) => a.order - b.order);
   // Hero-eligible blocks only promote out of the grid on Overview — a
   // category filter is a slice of the board, not the glanceable-summary
   // view hero is for, so filtered stat/stat-grid blocks render as normal
-  // cards, same as every other type.
-  const heroBlocks = isOverview ? sorted.filter(isHeroEligible) : [];
-  const gridBlocks = isOverview ? sorted.filter((b) => !isHeroEligible(b)) : sorted;
-  const mutators: BlockMutators = { onEditBlock, onSwapOrder, onResizeBlock, onDeleteBlock };
+  // cards, same as every other type. Grouped blocks never promote (see
+  // isHeroEligible's comment).
+  const heroBlocks = isOverview ? sortedUngrouped.filter(isHeroEligible) : [];
+  const gridOnlyBlocks = isOverview ? sortedUngrouped.filter((b) => !isHeroEligible(b)) : sortedUngrouped;
+
+  const topLevel: TopLevelEntry[] = [
+    ...gridOnlyBlocks.map((block) => ({ kind: "block" as const, id: block.id, order: block.order, block })),
+    ...visibleGroups.map(({ group, members }) => ({ kind: "group" as const, id: group.id, order: group.order, group, members })),
+  ].sort((a, b) => a.order - b.order);
+
+  const allGroupsForPicker = groups.map((g) => ({ id: g.id, title: g.title }));
 
   // Drag (or a rank-up/down click) always applies, regardless of the
   // block's current sort — a drop writes the new task priorities, then
@@ -337,21 +394,72 @@ export default function Board({
     onSourceChange(block.id, { ...block.source, sort: "priority" });
   }
 
+  function renderCard(block: Block, move: ReturnType<typeof neighborMove>, groupControls: GroupControls) {
+    return (
+      <BlockCard
+        key={block.id}
+        block={block}
+        maxCols={maxCols}
+        onEdit={() => onEditBlock(block)}
+        {...move}
+        onResize={(w, h) => onResizeBlock(block.id, w, h)}
+        onDelete={() => onDeleteBlock(block.id)}
+        onSourceChange={(source) => onSourceChange(block.id, source)}
+        groupControls={groupControls}
+      >
+        <BlockBody block={block} onReorder={(ids) => handleRowReorder(block, ids)} />
+      </BlockCard>
+    );
+  }
+
   return (
     <>
-      {heroBlocks.length > 0 && <HeroBand blocks={heroBlocks} mutators={mutators} />}
+      {heroBlocks.length > 0 && (
+        <HeroBand
+          blocks={heroBlocks}
+          onEditBlock={onEditBlock}
+          onSwapOrder={onSwapOrder}
+          onResizeBlock={onResizeBlock}
+          onDeleteBlock={onDeleteBlock}
+        />
+      )}
       <section className="board" aria-label="Board">
-        {gridBlocks.map((block, i) => (
-          <BlockCard
-            key={block.id}
-            block={block}
-            maxCols={maxCols}
-            {...kebabCallbacks(gridBlocks, i, block, mutators)}
-            onSourceChange={(source) => onSourceChange(block.id, source)}
-          >
-            <BlockBody block={block} onReorder={(ids) => handleRowReorder(block, ids)} />
-          </BlockCard>
-        ))}
+        {topLevel.map((entry, i) => {
+          const move = neighborMove(topLevel, i, onSwapOrder);
+
+          if (entry.kind === "block") {
+            return renderCard(entry.block, move, {
+              groups: allGroupsForPicker,
+              currentGroupId: undefined,
+              onAddToGroup: (groupId) => onAddBlockToGroup(entry.block.id, groupId),
+              onCreateGroupWith: (title) => onCreateGroupWithBlock(entry.block.id, title),
+              onRemoveFromGroup: () => {},
+            });
+          }
+
+          return (
+            <GroupSection
+              key={entry.id}
+              group={entry.group}
+              memberCount={entry.members.length}
+              maxCols={maxCols}
+              {...move}
+              onToggleCollapsed={() => onToggleGroupCollapsed(entry.group.id)}
+              onRename={(title) => onRenameGroup(entry.group.id, title)}
+              onDelete={(alsoDeleteBlocks) => onDeleteGroup(entry.group.id, alsoDeleteBlocks)}
+            >
+              {entry.members.map((block, j) =>
+                renderCard(block, neighborMove(entry.members, j, (a, b) => onSwapWithinGroup(entry.group.id, a, b)), {
+                  groups: allGroupsForPicker,
+                  currentGroupId: entry.group.id,
+                  onAddToGroup: () => {},
+                  onCreateGroupWith: () => {},
+                  onRemoveFromGroup: () => onRemoveBlockFromGroup(block.id),
+                }),
+              )}
+            </GroupSection>
+          );
+        })}
         <button className="add-block-tile" type="button" onClick={onAddBlock}>
           <Plus size={20} />
           Add Block

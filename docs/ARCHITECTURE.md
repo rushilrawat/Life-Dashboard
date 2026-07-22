@@ -274,6 +274,69 @@ override, absent by default (content-driven, as before).
   falling out of hero eligibility), with no visible effect on the tile
   itself in the meantime.
 
+## Groups
+
+A collapsible section (`Group`, see `DATA_MODEL.md`) holding several
+blocks, collapsed and moved as one unit. Always full board width
+(`grid-column: span` the current column count, same computed-inline
+pattern `BlockCard.tsx` uses for a resizable card, just always maxed
+out rather than reading a stored value) — a group is never itself
+resized, only the blocks inside it are.
+
+- **Assignment lives on the block, not the group**: `GroupPicker.tsx`,
+  a small icon button next to the pencil/kebab on every regular card
+  (not the hero band, see below), deliberately separate from
+  `KebabMenu` so the shared kebab component (used by both regular cards
+  and hero tiles) doesn't need to know about groups at all. Ungrouped
+  shows an "add to group" icon opening a small dropdown: pick an
+  existing group, or name a new one inline (same "swap the row/dropdown
+  for a form" pattern as everywhere else in this app — no native
+  `prompt()`). Already-grouped shows a single "remove from group" icon,
+  no dropdown needed since there's only one thing to do.
+- **New group**: created the first time a block is assigned to one
+  (`onCreateGroupWith` in `App.tsx`) — there's no separate "create empty
+  group" flow, a group with nothing in it has nothing to collapse or
+  move as a unit. The new group's `order` takes over the block's old
+  top-level slot, so it appears right where the block used to be rather
+  than jumping to the end of the board.
+- **Ordering**: top-level board order interleaves ungrouped blocks and
+  groups by comparing whichever of `Block.order` / `Group.order`
+  applies (`App.tsx.swapOrder`, generalized to look up either
+  collection by id) — a group's kebab Move up/down uses the exact same
+  mechanism a block's does. *Within* a group, order is `blockIds`'
+  array order instead, reordered by a separate `swapWithinGroup`
+  function; a grouped block's kebab Move up/down resolves its neighbor
+  from the group's member list rather than the top-level board list.
+  Both cases reuse one generic `neighborMove(list, i, onSwap)` helper in
+  `Board.tsx` — list-of-ids-plus-a-swap-function is the same shape
+  either way.
+- **Removing a block from a group** drops it from `blockIds` (dissolving
+  the group entirely if that was the last member) and gives it a fresh
+  top-level `order`, so it reappears at the end of the board rather than
+  wherever its stale pre-grouping order value happens to sort to now.
+- **Deleting a group** (its own kebab) asks, inline, whether to delete
+  the member blocks too or just ungroup — "Keep blocks, ungroup" releases
+  every member back to the top level in their existing relative order,
+  right where the group was (fractional order offsets off the group's
+  own slot, so nothing else on the board needs renumbering); "Delete
+  group and blocks" removes them outright, same cleanup `deleteBlock`
+  already does (blockdata, sync-cache). Same inline-warning spirit as
+  Settings' connector delete, not a native `confirm()`.
+- **Category filter**: a group has no `category` of its own. Its
+  members are looked up against the *already-filtered* blocks array
+  (`App.tsx`'s existing `activeCategory` filter, unchanged), so a group
+  with no member surviving the filter simply doesn't render, and one
+  with some matching members shows only those — the same "filtered out
+  means not rendered" rule an ordinary block already follows, extended
+  to groups for free rather than needing its own category concept.
+- **Hero band**: a grouped block is never hero-eligible regardless of
+  type — grouping is an explicit choice to keep something with its
+  group, hero promotion would silently defeat that. It only ever
+  renders inside its group, as a regular card.
+- **Rename**: click the group's title directly (a text input in place),
+  not routed through the kebab — a single text field doesn't need a
+  menu round-trip the way move/delete do.
+
 ## Per-block live filter
 
 For a `local`-sourced block, its `sort` and `filter` aren't fixed at
@@ -362,6 +425,10 @@ Every block (except while adding) shows a kebab menu with:
   the Resize section above. Not the only sizing mechanism (unlike
   reordering above) — dragging the card's own edges is the primary one.
 - **Delete** — removes the block and its cached sync data.
+
+Group assignment (add to group / remove from group) is a block-level
+action too, but lives in its own small `GroupPicker` control next to
+the kebab rather than inside it — see the Groups section above for why.
 
 ## Add / Edit Block flow
 
