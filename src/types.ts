@@ -125,6 +125,12 @@ export const CAPABILITIES: Record<ConnectorService, Capability[]> = {
       resultShape: "list",
       params: [{ key: "username", label: "GitHub username", type: "text" }],
     },
+    {
+      id: "recent-repos",
+      label: "Recent repos",
+      resultShape: "list",
+      params: [{ key: "username", label: "GitHub username", type: "text" }],
+    },
   ],
 };
 

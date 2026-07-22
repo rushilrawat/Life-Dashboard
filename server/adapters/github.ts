@@ -10,7 +10,7 @@ function authHeaders() {
 }
 
 const GITHUB_GRAPHQL_URL = "https://api.github.com/graphql";
-const HEATMAP_WEEKS = 12;
+const HEATMAP_DAYS = 90;
 
 const CONTRIBUTIONS_QUERY = `
   query($login: String!, $from: DateTime!, $to: DateTime!) {
@@ -39,7 +39,7 @@ async function commitHeatmap(params: Record<string, string>): Promise<HeatmapRes
   if (!username) throw new Error("commit-heatmap requires a username");
 
   const to = new Date();
-  const from = new Date(to.getTime() - HEATMAP_WEEKS * 7 * 24 * 60 * 60 * 1000);
+  const from = new Date(to.getTime() - HEATMAP_DAYS * 24 * 60 * 60 * 1000);
 
   const res = await fetch(GITHUB_GRAPHQL_URL, {
     method: "POST",
@@ -113,11 +113,41 @@ async function recentCommits(params: Record<string, string>): Promise<ListResult
   return { items };
 }
 
+interface Repo {
+  name: string;
+  description: string | null;
+  language: string | null;
+  pushed_at: string;
+}
+
+const RECENT_REPOS_LIMIT = 10;
+
+async function recentRepos(params: Record<string, string>): Promise<ListResult> {
+  const username = params.username;
+  if (!username) throw new Error("recent-repos requires a username");
+
+  const res = await fetch(
+    `https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=pushed&per_page=${RECENT_REPOS_LIMIT}`,
+    { headers: authHeaders() },
+  );
+  if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+
+  const repos = (await res.json()) as Repo[];
+  return {
+    items: repos.map((r) => ({
+      title: r.name,
+      subtitle: r.description ?? r.language ?? undefined,
+      date: r.pushed_at.slice(0, 10),
+    })),
+  };
+}
+
 type CapabilityFn = (params: Record<string, string>) => Promise<BlockResult>;
 
 const CAPABILITY_FNS: Record<string, CapabilityFn> = {
   "commit-heatmap": commitHeatmap,
   "recent-commits": recentCommits,
+  "recent-repos": recentRepos,
 };
 
 export async function runCapability(
