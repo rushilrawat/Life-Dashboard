@@ -152,6 +152,16 @@ API is free. Google Calendar (or another service) is the natural next
 connector, following the same adapter pattern, deferred pending its
 OAuth setup (meaningfully more setup than GitHub's single pasted token).
 
+Verified live post-roadmap: a real token in `.env` plus a real username
+against `commit-heatmap` renders actual contribution data end to end in
+the browser — the done criterion above, previously untested against a
+live token. This run also surfaced that `recent-commits` was silently
+broken for every user: GitHub removed the `commits` array from public
+push-event payloads (now only `head`/`before` SHAs), so every row showed
+"0 commits" regardless of what was actually pushed. Fixed by fetching
+the head commit's message per event via `GET /repos/{repo}/commits/{sha}`
+instead of reading it off the event payload. `server/adapters/github.ts`.
+
 ## Phase 6 — Polish
 
 Weekly review banner (carried over from the earlier build: show after

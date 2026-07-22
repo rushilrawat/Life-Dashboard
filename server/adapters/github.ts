@@ -70,10 +70,23 @@ interface PushEvent {
   type: string;
   repo: { name: string };
   created_at: string;
-  payload: { commits?: { message: string }[] };
+  payload: { head?: string };
 }
 
 const RECENT_COMMITS_LIMIT = 10;
+
+// GitHub's public events API stopped including a `commits` array on push
+// events (payload now only carries `head`/`before` SHAs), so the commit
+// message has to be fetched separately per event.
+async function headCommitMessage(repo: string, sha: string): Promise<string> {
+  const res = await fetch(`https://api.github.com/repos/${repo}/commits/${sha}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) return sha.slice(0, 7);
+  const body = await res.json();
+  const message = body.commit?.message as string | undefined;
+  return message ? message.split("\n")[0] : sha.slice(0, 7);
+}
 
 async function recentCommits(params: Record<string, string>): Promise<ListResult> {
   const username = params.username;
@@ -85,15 +98,19 @@ async function recentCommits(params: Record<string, string>): Promise<ListResult
   if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
 
   const events = (await res.json()) as PushEvent[];
-  const pushes = events.filter((e) => e.type === "PushEvent").slice(0, RECENT_COMMITS_LIMIT);
+  const pushes = events
+    .filter((e) => e.type === "PushEvent" && e.payload.head)
+    .slice(0, RECENT_COMMITS_LIMIT);
 
-  return {
-    items: pushes.map((e) => {
-      const commits = e.payload.commits ?? [];
-      const title = commits.length === 1 ? commits[0].message : `${commits.length} commits`;
-      return { title, subtitle: e.repo.name, date: e.created_at.slice(0, 10) };
-    }),
-  };
+  const items = await Promise.all(
+    pushes.map(async (e) => ({
+      title: await headCommitMessage(e.repo.name, e.payload.head!),
+      subtitle: e.repo.name,
+      date: e.created_at.slice(0, 10),
+    })),
+  );
+
+  return { items };
 }
 
 type CapabilityFn = (params: Record<string, string>) => Promise<BlockResult>;
