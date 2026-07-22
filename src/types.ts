@@ -6,7 +6,7 @@
 export type BlockType =
   | "stat" | "stat-grid" | "list" | "progress-list"
   | "table" | "chart" | "breakdown" | "heatmap" | "week"
-  | "text" | "links";
+  | "text" | "links" | "embed";
 
 export type SourceKind = "local" | "api";
 
@@ -31,7 +31,7 @@ export interface Block {
   width: "half" | "full";
   order: number;
   category?: string;      // free text, drives the sidebar filter chips, blank = only shows under "Overview"
-  source?: LocalSource | ApiSource;   // absent for "text" and "links"
+  source?: LocalSource | ApiSource;   // absent for "text", "links", and "embed"
 }
 
 // ## Shapes returned per block type
@@ -175,6 +175,18 @@ export interface Link {
 
 export interface LinksBlockData {
   links: Link[];
+}
+
+// ## Embed (used by `embed` blocks)
+// A curated allowlist, not a general iframe escape hatch — provider
+// detection and embed-URL construction live in src/lib/embedProviders.ts.
+// One embed per block instance, keyed by block ID, like Note and Links.
+
+export type EmbedProvider = "youtube" | "google-sheets" | "figma" | "loom";
+
+export interface EmbedBlockData {
+  url: string;             // the original URL the person pasted
+  provider: EmbedProvider;
 }
 
 // ## Settings

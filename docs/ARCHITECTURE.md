@@ -30,10 +30,10 @@ differently-configured blocks, and lets one service expose two different
 ## Block types (display primitives, not domain types)
 
 `stat`, `stat-grid`, `list`, `progress-list`, `table`, `chart`,
-`breakdown`, `heatmap`, `week`, `text`, `links`. Never add a
+`breakdown`, `heatmap`, `week`, `text`, `links`, `embed`. Never add a
 domain-specific type like "github-block" or "email-block". If a new
-need shows up, it is one of these eleven, shaped by its query, not a
-twelfth type. Each of the last three additions earned its place the
+need shows up, it is one of these twelve, shaped by its query, not a
+thirteenth type. Each of the last four additions earned its place the
 same way: a distinct visual shape that recurred across more than one
 real use case, not something that just looked nice once.
 
@@ -47,9 +47,17 @@ real use case, not something that just looked nice once.
   Calendar events are the obvious case, but the same shape fits "tasks
   due this week" from local data just as well, it's not calendar-
   specific, it's date-keyed-entries-specific.
+- `embed`: inline external content that's genuinely more useful seen
+  in place than linked out to, a spreadsheet, a video, a design file.
+  Unlike every other type, it isn't shaped by an adapter's
+  `resultShape` — it's a curated allowlist of embeddable providers
+  (YouTube, Google Sheets, Figma, Loom today), see the Embed block
+  section below and `CLAUDE.md`'s iframe non-negotiable for why this
+  stays narrow rather than becoming a general "embed any URL" hatch.
 
-`text` and `links` are the two exceptions to everything below, they
-hold user-authored content directly and have no source at all.
+`text`, `links`, and `embed` are the three exceptions to everything
+below, they hold user-authored content directly (a note, a bookmark
+list, a pasted URL) and have no source at all.
 
 ## Source kinds
 
@@ -315,8 +323,8 @@ Every block (except while adding) shows a kebab menu with:
 
 Three steps, in this order, matching the reference design:
 
-1. **Choose block type** — grid of the eleven types.
-2. **Data source** — for every type except text/links: toggle between
+1. **Choose block type** — grid of the twelve types.
+2. **Data source** — for every type except text/links/embed: toggle between
    Local and Connected service, then the relevant config. Local shows
    collection+sort+filter. Connected service shows a cascade: a
    connector picker (filtered to connectors whose service has any
@@ -327,8 +335,10 @@ Three steps, in this order, matching the reference design:
    the one before it is chosen. `heatmap` will almost always be a
    connected service in practice, few people have a local day-by-day
    count worth a heatmap, but the toggle stays available for
-   consistency, don't special-case it out. For text/links: skip this
-   step, there's nothing to configure.
+   consistency, don't special-case it out. For text/links/embed: skip
+   this step, there's nothing to configure here — embed's one field
+   (the URL) is entered on the block itself, same pattern as Links'
+   add form, not in this panel.
 3. **Block settings** — title, width (half/full), category (free text
    with autocomplete from categories already in use, optional, blank
    means the block only ever shows under Overview).
@@ -365,6 +375,34 @@ call, ever.
 - No click tracking, no auto-sort by usage, that's speculative
   infrastructure for a v1. If it's genuinely wanted later it's a small,
   isolated addition, not a reason to hold up the rest of this build.
+
+## Embed block: curated, not a general iframe hatch
+
+Like Links, this lives entirely in the block, `local`-shaped in spirit
+(no connector, no sync) even though its source is technically absent
+rather than `LocalSource`. One URL per block instance, keyed by block
+ID, stored as `EmbedBlockData`.
+
+- Empty state: a single URL input plus an "Embed" button. Pasting a
+  link runs it through `detectEmbed()` (`src/lib/embedProviders.ts`),
+  which pattern-matches it against a fixed allowlist (YouTube, Google
+  Sheets, Figma, Loom) and, on a match, builds that provider's own
+  official embed URL. No match keeps the Embed button disabled with a
+  muted hint naming the supported providers — same "disabled button is
+  the signal" convention as everywhere else in this app
+  (`DESIGN.md`'s States section), not red error text.
+- Once set, the card body becomes that provider's embed URL in an
+  `iframe`, with a small "Change link" text control beneath to swap it
+  without deleting and recreating the block.
+- The embed URL itself is never stored, only the original pasted `url`
+  and the detected `provider` — the embed URL is cheap to recompute
+  from those two at render time, and storing it separately would let
+  the two drift if `embedProviders.ts`'s URL-building logic ever
+  changes.
+- This is the one block type that renders a live iframe. It stays
+  narrow on purpose: adding a new provider means adding one more
+  pattern to `embedProviders.ts`'s matcher list, not opening a
+  paste-any-URL hatch. See `CLAUDE.md`'s iframe non-negotiable.
 
 ## Backend proxy
 

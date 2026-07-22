@@ -9,7 +9,7 @@ this doc drift, the code is wrong, fix the code.
 type BlockType =
   | "stat" | "stat-grid" | "list" | "progress-list"
   | "table" | "chart" | "breakdown" | "heatmap" | "week"
-  | "text" | "links";
+  | "text" | "links" | "embed";
 
 type SourceKind = "local" | "api";
 
@@ -34,7 +34,7 @@ interface Block {
   width: "half" | "full";
   order: number;
   category?: string;      // free text, drives the sidebar filter chips, blank = only shows under "Overview"
-  source?: LocalSource | ApiSource;   // absent for "text" and "links"
+  source?: LocalSource | ApiSource;   // absent for "text", "links", and "embed"
 }
 ```
 
@@ -109,7 +109,7 @@ it and the segment uses the plain accent color. A `breakdown` with one
 segment or none is just a plain ring, that's a valid, common case, not
 a special one.
 
-`text` and `links` blocks don't use this shape system, see below.
+`text`, `links`, and `embed` blocks don't use this shape system, see below.
 
 ## Connector
 
@@ -214,6 +214,25 @@ interface LinksBlockData {
 One link collection per block instance, keyed by block ID. If more than
 one links block ever exists on the board, they do not share data.
 
+## Embed (used by `embed` blocks)
+
+```ts
+type EmbedProvider = "youtube" | "google-sheets" | "figma" | "loom";
+
+interface EmbedBlockData {
+  url: string;             // the original URL the person pasted
+  provider: EmbedProvider;
+}
+```
+One embed per block instance, keyed by block ID, same storage pattern as
+`NoteBlockData`/`LinksBlockData`. `provider` is decided by pattern-matching
+the pasted URL against a fixed allowlist in `src/lib/embedProviders.ts`,
+which also builds that provider's official embed URL (recomputed from
+`url` at render time, not stored separately). A link matching none of the
+allowlist is rejected at input time — see `CLAUDE.md`'s iframe
+non-negotiable for why this stays a curated primitive, not a general
+"embed any URL" hatch.
+
 ## Settings
 
 ```ts
@@ -266,7 +285,7 @@ interface SyncCacheEntry {
 | `blocks`                 | `Block[]`                                 |
 | `tasks`                  | `Task[]`                                  |
 | `metrics`                | `Metric[]`                                |
-| `blockdata:<blockId>`    | `NoteBlockData` or `LinksBlockData`       |
+| `blockdata:<blockId>`    | `NoteBlockData`, `LinksBlockData`, or `EmbedBlockData` |
 | `sync-cache:<blockId>`   | `SyncCacheEntry`                          |
 | `settings`               | `Settings`                                |
 | `last-review`            | ISO timestamp string                      |

@@ -19,6 +19,7 @@ import type {
 import BlockCard, { EmptyState, KebabMenu, timeAgo } from "./BlockCard";
 import BreakdownBlock from "./blocks/BreakdownBlock";
 import ChartBlock from "./blocks/ChartBlock";
+import EmbedBlock from "./blocks/EmbedBlock";
 import HeatmapBlock from "./blocks/HeatmapBlock";
 import LinksBlock from "./blocks/LinksBlock";
 import ListBlock from "./blocks/ListBlock";
@@ -92,6 +93,7 @@ function isDraggableTasksBlock(block: Block): boolean {
 function BlockBody({ block, onReorder }: { block: Block; onReorder?: (ids: string[]) => void }) {
   if (block.type === "text") return <TextBlock blockId={block.id} />;
   if (block.type === "links") return <LinksBlock blockId={block.id} width={block.width} />;
+  if (block.type === "embed") return <EmbedBlock blockId={block.id} />;
 
   const result = resolveBlockData(block);
   if (!result) {

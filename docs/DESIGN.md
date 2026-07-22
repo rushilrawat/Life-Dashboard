@@ -355,7 +355,7 @@ everywhere a connector or a link might otherwise show a recognizable
 brand mark, connector rows in Settings and link rows in the Links
 block both need generic treatment.
 
-## Text and Links blocks
+## Text, Links, and Embed blocks
 
 **Text**: one plain `<textarea>`, `--surface-raised` background,
 `--border` outline, no rich formatting, no headings, no auto-detected
@@ -375,14 +375,26 @@ generic favicon-style icon or monogram square (never a real fetched
 favicon of a brand mark, same rule as connectors), label, small
 external-link glyph trailing on hover.
 
+**Embed**: empty state is a single URL input (`--surface-raised`
+background, matching Text's textarea) stacked above an "Embed" button,
+`--accent` filled, disabled until the pasted link matches a supported
+provider — no red error text, same disabled-button-is-the-signal
+convention as the Add/Edit panel's own Save button (see States,
+below), with a muted one-line hint beneath naming the supported
+providers. Once set, the card body becomes a 16:9 `iframe`, full card
+width, `8px` radius, no border of its own since the card's own border
+already frames it. A small `--text-muted` "Change link" text button
+sits beneath, `--text-secondary` on hover, the only way back to the
+input without deleting and recreating the block.
+
 ## Add / Edit Block panel
 
 Slide-in panel from the right, `--surface-raised` background,
 `--border-strong` left edge. Three stacked sections matching
 `ARCHITECTURE.md`'s three-step flow, each with a numbered small-caps
 label ("1. Choose block type", "2. Data source", "3. Block settings").
-Block type picker is a 4-column icon grid (eleven tiles, three rows,
-last row partial), each tile `--surface`/`--border` default,
+Block type picker is a 4-column icon grid (twelve tiles, three even
+rows), each tile `--surface`/`--border` default,
 `--accent-tint` background with `--accent` border when selected. The
 Local/Connected-service toggle is a two-segment control, same selected
 treatment. When Connected service is active: a connector dropdown, then

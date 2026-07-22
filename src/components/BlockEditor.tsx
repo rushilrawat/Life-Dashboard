@@ -2,6 +2,7 @@ import {
   BarChart3,
   CalendarDays,
   FileText,
+  Frame,
   Grid3x3,
   Hash,
   LayoutGrid,
@@ -30,9 +31,10 @@ const BLOCK_TYPES: { type: BlockType; label: string; icon: typeof Hash }[] = [
   { type: "week", label: "Week", icon: CalendarDays },
   { type: "text", label: "Text", icon: FileText },
   { type: "links", label: "Links", icon: Link2 },
+  { type: "embed", label: "Embed", icon: Frame },
 ];
 
-const NO_SOURCE: BlockType[] = ["text", "links"];
+const NO_SOURCE: BlockType[] = ["text", "links", "embed"];
 
 export interface BlockFormData {
   type: BlockType;

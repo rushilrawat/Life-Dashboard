@@ -52,9 +52,15 @@ them back without a specific new reason, "would be nice" is not one.
   Move up/down already was the keyboard-accessible mechanism.)
 - No freeform resize. Width is `"half" | "full"`, height is
   content-driven, never user-set.
-- No custom-code / iframe block type. If a real gap shows up that the
-  eleven primitives in `DATA_MODEL.md` can't express, that's a signal
-  to design one new primitive, not a general escape hatch.
+- No general-purpose iframe/custom-code escape hatch. The one exception
+  is `embed` (see the block-type count below): a curated primitive that
+  only recognizes a fixed allowlist of providers (YouTube, Google
+  Sheets, Figma, Loom today) and renders each through that provider's
+  own official embed URL, detected in `src/lib/embedProviders.ts`. A
+  pasted link that matches none of these is rejected at input time —
+  there is still no way to iframe an arbitrary URL or run custom code.
+  Supporting a new provider means adding one more pattern to that file,
+  not widening the hatch.
 - Settings (gear icon) holds exactly two things: connector management
   and accent theme. Nothing else lives there.
 - Every other block-level action, edit, reorder, resize, delete, lives
@@ -72,12 +78,13 @@ them back without a specific new reason, "would be nice" is not one.
   (Tasks/Projects/Learning/Work/Personal/Health/...) just because it's
   possible, most boards should land at two to four categories, not
   seven.
-- Eleven block types, not eight. `breakdown`, `heatmap`, and `week`
-  were each added because a distinct visual shape recurred across more
-  than one real use case, not because they looked nice once. See
-  `DATA_MODEL.md` for what each one is and why it earned its place.
-  Still no domain-specific types, none of the eleven mention GitHub,
-  Gmail, or any other service by name.
+- Twelve block types, not eight. `breakdown`, `heatmap`, `week`, and
+  `embed` were each added because a distinct visual shape recurred
+  across more than one real use case, not because they looked nice
+  once. See `DATA_MODEL.md` for what each one is and why it earned its
+  place. Still no domain-specific types, none of the twelve mention
+  GitHub, Gmail, or any other service by name — `embed` picks providers
+  by URL shape, not by declaring a service in the type system.
 - Notes stays a single plain textarea per block instance. Don't
   restructure it into headings, bullet groups, or multiple entries,
   that was tried in a reference design and reverted, plain free text

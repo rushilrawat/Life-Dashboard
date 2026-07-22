@@ -1,5 +1,6 @@
 import type {
   Block,
+  EmbedBlockData,
   LinksBlockData,
   Metric,
   NoteBlockData,
@@ -22,7 +23,7 @@ interface KeyValues {
 type StorageKey = keyof KeyValues | `blockdata:${string}` | `sync-cache:${string}`;
 
 export function get<K extends keyof KeyValues>(key: K): KeyValues[K] | null;
-export function get(key: `blockdata:${string}`): NoteBlockData | LinksBlockData | null;
+export function get(key: `blockdata:${string}`): NoteBlockData | LinksBlockData | EmbedBlockData | null;
 export function get(key: `sync-cache:${string}`): SyncCacheEntry | null;
 export function get(key: StorageKey): unknown {
   const raw = localStorage.getItem(key);
@@ -35,7 +36,7 @@ export function get(key: StorageKey): unknown {
 }
 
 export function set<K extends keyof KeyValues>(key: K, value: KeyValues[K]): void;
-export function set(key: `blockdata:${string}`, value: NoteBlockData | LinksBlockData): void;
+export function set(key: `blockdata:${string}`, value: NoteBlockData | LinksBlockData | EmbedBlockData): void;
 export function set(key: `sync-cache:${string}`, value: SyncCacheEntry): void;
 export function set(key: StorageKey, value: unknown): void {
   localStorage.setItem(key, JSON.stringify(value));

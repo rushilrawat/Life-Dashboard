@@ -193,6 +193,17 @@ pass, at the person's explicit request ("proceed with phase 6 ...
 execute") — everywhere else in this doc, phases were built one at a
 time with a stop-and-confirm between each.
 
+A fourth post-roadmap addition, same session: a twelfth block type,
+`embed`, for seeing a Google Sheet, a YouTube video, a Figma file, or a
+Loom recording inline instead of just linked out to. This is a direct,
+scoped exception to the no-iframe non-negotiable, not a reversal of it —
+`embed` only recognizes a fixed provider allowlist
+(`src/lib/embedProviders.ts`) and rejects anything else at input time,
+there is still no way to iframe an arbitrary URL. See
+`ARCHITECTURE.md`'s Embed block section and `DESIGN.md`'s Text, Links,
+and Embed blocks section for the full spec, and `CLAUDE.md`'s
+non-negotiables for the reasoning.
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-
@@ -203,7 +214,11 @@ build, they were cut deliberately, see `CLAUDE.md`:
   block's task data (added post-Phase-6, see below) is a different axis
   and doesn't reverse this; see `CLAUDE.md`'s non-negotiable for the
   distinction spelled out.
-- A custom-code / iframe block type
+- A general-purpose iframe/custom-code block type — still out of
+  scope. The curated `embed` primitive (added post-roadmap, allowlisted
+  providers only: YouTube, Google Sheets, Figma, Loom) is a different,
+  narrower thing and doesn't reverse this, see `CLAUDE.md`'s
+  non-negotiable for the distinction spelled out.
 - Any block action routed through Settings instead of the block's own
   kebab menu
 - Multi-user, auth, or a real database, this is a single-user,
