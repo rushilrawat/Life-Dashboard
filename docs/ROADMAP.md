@@ -297,6 +297,19 @@ board reordering, drag into/out of groups, the command palette, toasts
 with undo-delete, and bulk select), each built, browser-verified, and
 committed as its own step.
 
+A new session picked up from there with a real bug in the previous
+session's own drag-into/out-of-group work: dropping a grouped block
+back onto its own group (a sibling member, or the group's own header)
+was silently ejecting it to the top level, because `GroupSection`'s
+drop handler only distinguished "join a different group" from "fall
+through to the generic reorder handler," with no case for "this block
+is already a member of the group it just landed on" — that fallthrough
+never called `stopPropagation()`, so the drop bubbled to `Board.tsx`'s
+board-level handler, which reads any unclaimed drop as "take this block
+out of its group." Fixed with a third case, `isDropInOwnGroup`, that
+swallows the event as a genuine no-op instead. See `ARCHITECTURE.md`'s
+Groups section, "How reorder-drag and group-drag coexist."
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-

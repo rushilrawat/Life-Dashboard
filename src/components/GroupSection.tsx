@@ -85,6 +85,13 @@ interface Props extends KebabProps {
   // behavior carried by `dragHandleProps` instead (dragging this group, or
   // another top-level block/group, past this one to reorder it).
   canAcceptBlockDrop: boolean;
+  // True while a block that already belongs to *this* group is being
+  // dragged. A drop in that case is neither a join (already a member) nor
+  // a top-level reorder (a grouped block isn't in the top-level list) — it
+  // must be swallowed here so it doesn't fall through to Board.tsx's
+  // board-level handler, which would otherwise read it as "declined" and
+  // eject the block from its own group.
+  isDropInOwnGroup: boolean;
   onAcceptBlockDrop: () => void;
   children: ReactNode;
 }
@@ -105,6 +112,7 @@ export default function GroupSection({
   dragHandleProps,
   isDragging,
   canAcceptBlockDrop,
+  isDropInOwnGroup,
   onAcceptBlockDrop,
   children,
   ...kebab
@@ -136,6 +144,11 @@ export default function GroupSection({
     if (canAcceptBlockDrop) {
       e.preventDefault();
       onAcceptBlockDrop();
+      e.stopPropagation();
+      return;
+    }
+    if (isDropInOwnGroup) {
+      e.preventDefault();
       e.stopPropagation();
       return;
     }

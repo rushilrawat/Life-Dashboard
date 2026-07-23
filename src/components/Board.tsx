@@ -531,6 +531,11 @@ export default function Board({
 
           const canAcceptBlockDrop =
             draggingBlockId !== null && !isDraggingBlockGrouped && !entry.group.blockIds.includes(draggingBlockId);
+          // A member of *this* group being dropped back onto its own
+          // GroupSection isn't a "decline" (that's what ejects a grouped
+          // block per ARCHITECTURE.md's Groups section) — it's a genuine
+          // no-op, since intra-group drag-reorder isn't supported this pass.
+          const isDropInOwnGroup = draggingBlockId !== null && entry.group.blockIds.includes(draggingBlockId);
 
           return (
             <GroupSection
@@ -545,6 +550,7 @@ export default function Board({
               dragHandleProps={topLevelDragProps(entry.id)}
               isDragging={draggingTopLevelId === entry.id}
               canAcceptBlockDrop={canAcceptBlockDrop}
+              isDropInOwnGroup={isDropInOwnGroup}
               onAcceptBlockDrop={() => draggingBlockId && onAddBlockToGroup(draggingBlockId, entry.group.id)}
             >
               {entry.members.map((block, j) =>
