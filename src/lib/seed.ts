@@ -23,8 +23,11 @@ const tasks: Task[] = [
 
 const metrics: Metric[] = [
   { id: "m1", name: "Current Streak", value: "6 days" },
-  { id: "m2", name: "Weekly Focus", value: "18h" },
-  { id: "m3", name: "Habit Score", value: "82%" },
+  // "Done This Week" and "Habit Score" are live-computed from tasks on every
+  // read (resolveLocal.ts's computeLiveMetricValue) — these stored values
+  // are placeholders, never actually rendered.
+  { id: "m2", name: "Done This Week", value: "0/0" },
+  { id: "m3", name: "Habit Score", value: "0%" },
 ];
 
 const blocks: Block[] = [
@@ -73,4 +76,14 @@ export function seedIfEmpty(): void {
   if (storage.get("blocks") === null) storage.set("blocks", blocks);
   if (storage.get("blockdata:b-text") === null) storage.set("blockdata:b-text", noteData);
   if (storage.get("blockdata:b-links") === null) storage.set("blockdata:b-links", linksData);
+}
+
+// One-time rename for a board seeded before "Weekly Focus" became "Done
+// This Week" (a real, tasks-derived metric, see resolveLocal.ts) — no-op
+// for a board that never had the old name.
+export function migrateMetricNames(): void {
+  const existing = storage.get("metrics");
+  if (!existing) return;
+  const renamed = existing.map((m) => (m.name === "Weekly Focus" ? { ...m, name: "Done This Week" } : m));
+  if (renamed.some((m, i) => m.name !== existing[i].name)) storage.set("metrics", renamed);
 }

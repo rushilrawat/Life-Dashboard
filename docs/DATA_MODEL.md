@@ -221,6 +221,13 @@ interface Metric {
 }
 ```
 
+Two names are special: a `Metric` named `"Habit Score"` or `"Done This
+Week"` has its stored `value` ignored and recomputed from the `tasks`
+collection on every read (`resolveLocal.ts`'s `computeLiveMetricValue`)
+— see `ARCHITECTURE.md`'s Source kinds section for the exact formulas.
+Every other metric (e.g. `"Current Streak"`) is stored and read as
+plain data, no computation.
+
 ## Note (used by `text` blocks)
 
 ```ts

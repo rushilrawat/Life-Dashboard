@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App, { defaultSettings } from "./App";
 import * as storage from "./lib/storage";
-import { seedIfEmpty } from "./lib/seed";
+import { migrateMetricNames, seedIfEmpty } from "./lib/seed";
 import { applyTheme } from "./styles/themes";
 import "./styles/tokens.css";
 import "./styles/app.css";
@@ -11,6 +11,7 @@ import "./styles/app.css";
 // has the right palette — tokens.css only carries Forest dark defaults.
 applyTheme(storage.get("settings") ?? defaultSettings);
 seedIfEmpty();
+migrateMetricNames();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

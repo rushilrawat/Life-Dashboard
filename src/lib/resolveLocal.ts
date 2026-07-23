@@ -123,6 +123,39 @@ function parseFirstNumber(s: string): number {
   return m ? parseFloat(m[0]) : 0;
 }
 
+// "Habit Score" and "Done This Week" were static seed strings until a user
+// request to make them real. There's no formula field on Metric (and no UI
+// to add one), so these two are special-cased by name — the stored
+// Metric.value becomes a dead placeholder for exactly these two, live-
+// computed from tasks on every read instead. ponytail: name-matching is
+// fine for two known metrics; a real per-metric formula system would be
+// overkill for a board only these two ever needed it on.
+function computeLiveMetricValue(name: string, tasks: Task[]): string | null {
+  if (name === "Habit Score") {
+    if (tasks.length === 0) return "—";
+    const done = tasks.filter((t) => t.percent === 100).length;
+    return `${Math.round((done / tasks.length) * 100)}%`;
+  }
+  if (name === "Done This Week") {
+    // Task has a due date, not a completed-at timestamp, so "done this
+    // week" means of what's due in the current 7-day window (the same
+    // window filterTasks's "this-week" already uses), how much is done —
+    // not literally "finished in the last 7 days," which isn't knowable
+    // from this schema.
+    const dueThisWeek = filterTasks(tasks, "this-week");
+    const done = dueThisWeek.filter((t) => t.percent === 100).length;
+    return `${done}/${dueThisWeek.length}`;
+  }
+  return null;
+}
+
+function withLiveMetricValues(metrics: Metric[], tasks: Task[]): Metric[] {
+  return metrics.map((m) => {
+    const live = computeLiveMetricValue(m.name, tasks);
+    return live === null ? m : { ...m, value: live };
+  });
+}
+
 function buildWeek(tasks: Task[]): WeekResult {
   const start = today();
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -214,6 +247,6 @@ export function resolveLocal(block: Block): LocalResult | null {
     const tasks = sortTasks(filterTasks(storage.get("tasks") ?? [], filter), sort);
     return shapeFromTasks(block.type, tasks, filter);
   }
-  const metrics = sortMetrics(storage.get("metrics") ?? [], sort);
+  const metrics = withLiveMetricValues(sortMetrics(storage.get("metrics") ?? [], sort), storage.get("tasks") ?? []);
   return shapeFromMetrics(block.type, metrics);
 }

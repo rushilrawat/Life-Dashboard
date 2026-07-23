@@ -357,6 +357,21 @@ and restore" section for why a reload-safe undo wasn't worth building
 here), then reloads. `sync-cache` entries are deliberately excluded
 from the backup, they're a re-fetchable cache, not durable data.
 
+A sixteenth post-roadmap addition, same session: "Habit Score" and
+"Weekly Focus" in the hero band's Metrics tile had been hardcoded seed
+strings since Phase 2, never actually computed. Habit Score is now
+`done / total` across every task; "Weekly Focus" was renamed to "Done
+This Week" and reads as `done / total` across tasks due in the current
+week — a due-date proxy, not real time-tracking, since nothing in this
+app records hours spent or a task's completion timestamp, only its due
+date and percent. Confirmed both definitions with the person first
+rather than guessing, since the original list flagged this one as
+worth discussing. A small one-time migration (`migrateMetricNames` in
+`seed.ts`, run once from `main.tsx`) renames an existing board's stored
+"Weekly Focus" metric so already-seeded boards pick up the new name
+without a manual edit. See `ARCHITECTURE.md`'s Source kinds section and
+`DATA_MODEL.md`'s Metric section.
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-

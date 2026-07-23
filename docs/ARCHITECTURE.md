@@ -114,6 +114,19 @@ field. The resolver degrades safely (returns the input unsorted, or
 `null` for an unhandled pairing, which the card renders as its empty
 state) rather than guessing at semantics that don't exist.
 
+**Two live-computed metrics**: "Habit Score" and "Done This Week" are
+special-cased by name in `resolveLocal.ts`'s `computeLiveMetricValue` —
+their stored `Metric.value` is a dead placeholder, recomputed from the
+`tasks` collection on every read instead. "Habit Score" is `done /
+total` across every task; "Done This Week" is `done / total` across
+just the tasks due in the current 7-day window (the same window
+`filter: "this-week"` uses) — a due-date proxy, not a literal
+completed-in-the-last-7-days count, since `Task` has no completed-at
+timestamp to measure that directly. Every other `Metric` (e.g. "Current
+Streak") stays exactly what's stored, there's no general formula system
+here, just these two known names — see the `ponytail:` comment at the
+call site for why that's enough.
+
 ### `api`
 
 Reads from one connected external service via a hand-written adapter,
