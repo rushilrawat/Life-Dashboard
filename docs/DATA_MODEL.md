@@ -132,13 +132,14 @@ in `server/adapters/`, not a shape change.
 type Connector = {
   id: string;
   name: string;
-  service: "github";
+  service: "github" | "weather";
 };
 
 type ConnectorService = Connector["service"];
 
 const SERVICE_LABELS: Record<ConnectorService, string> = {
   github: "GitHub",
+  weather: "Weather",
 };
 
 // A named, adapter-declared operation: what it returns (resultShape)
@@ -167,9 +168,34 @@ const CAPABILITIES: Record<ConnectorService, Capability[]> = {
       resultShape: "list",
       params: [{ key: "username", label: "GitHub username", type: "text" }],
     },
+    {
+      id: "recent-repos",
+      label: "Recent repos",
+      resultShape: "list",
+      params: [{ key: "username", label: "GitHub username", type: "text" }],
+    },
+  ],
+  weather: [
+    {
+      id: "current-weather",
+      label: "Current weather",
+      resultShape: "stat-grid",
+      params: [{ key: "location", label: "City", type: "text" }],
+    },
+    {
+      id: "forecast",
+      label: "7-day forecast",
+      resultShape: "table",
+      params: [{ key: "location", label: "City", type: "text" }],
+    },
   ],
 };
 ```
+
+`weather` (Open-Meteo) needs no API key — geocoding and forecast are both
+free, unauthenticated endpoints — so it's the one service whose adapter
+declares `requiredEnvVars: []`. `GET /api/connectors/status` treats a
+zero-length list as always-connected rather than always-missing.
 
 ## Task (local collection)
 

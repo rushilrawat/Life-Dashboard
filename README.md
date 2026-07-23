@@ -91,7 +91,7 @@ category and they drop back into the grid like every other type.
 block in one batched request. A block that fails keeps its last-known
 data with a small stale indicator rather than going blank.
 
-### Connecting GitHub (the one service with a working adapter today)
+### Connecting GitHub
 
 1. Generate a free personal access token at
    [github.com/settings/tokens](https://github.com/settings/tokens) —
@@ -104,6 +104,15 @@ data with a small stale indicator rather than going blank.
    (`commit-heatmap` for heatmap blocks, `recent-commits` for list
    blocks) → enter the GitHub username to pull from.
 5. Click Sync.
+
+### Connecting Weather
+
+No API key, no `.env` entry — Open-Meteo's geocoding and forecast
+endpoints are both free and unauthenticated. Settings → Connectors →
+add one, service "Weather" — it shows connected immediately. Add or
+edit a `stat-grid` block → Connected service → pick the connector →
+`current-weather` (or a `table` block → `forecast`) → enter a city
+name. Click Sync.
 
 Adding another service later means writing one more adapter file in
 `server/adapters/` — see `docs/ARCHITECTURE.md`'s Source kinds section.

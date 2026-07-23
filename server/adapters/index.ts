@@ -1,5 +1,6 @@
 import type { BlockResult, ConnectorService } from "../../src/types.ts";
 import * as github from "./github.ts";
+import * as weather from "./weather.ts";
 
 export interface ApiResolveRequest {
   blockId: string;
@@ -12,6 +13,7 @@ export interface ApiResolveRequest {
 // Calendar) is one more file in this directory plus one more line here.
 const ADAPTERS: Record<ConnectorService, typeof github> = {
   github,
+  weather,
 };
 
 export function resolveApiRequest(req: ApiResolveRequest): Promise<BlockResult | null> {

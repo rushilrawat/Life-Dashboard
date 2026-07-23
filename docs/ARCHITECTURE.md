@@ -131,14 +131,17 @@ pairing is never selectable in the first place.
 
 A connector is `{ id, name, service }` — a registration that a service
 is in use, not a credential and not a query. `service` picks which
-adapter resolves it (`"github"` today). The one real credential per
-service (e.g. `GITHUB_TOKEN`) lives once in the backend's `.env`, never
-in a connector instance — this is a single-user tool, one account per
-service is the realistic case. What to fetch (capability + params) lives
-on each block's `ApiSource`, not the connector, so one connector can
-back many differently-configured blocks — two heatmaps for two different
-GitHub usernames don't need two connectors, just two blocks pointed at
-the same one with different params.
+adapter resolves it (`"github"` or `"weather"` today). The one real
+credential per service (e.g. `GITHUB_TOKEN`) lives once in the backend's
+`.env`, never in a connector instance — this is a single-user tool, one
+account per service is the realistic case. Not every service needs a
+credential at all: `weather` (Open-Meteo) is free and unauthenticated,
+so its adapter declares no required env vars and is always "connected."
+What to fetch (capability + params) lives on each block's `ApiSource`,
+not the connector, so one connector can back many differently-configured
+blocks — two heatmaps for two different GitHub usernames don't need two
+connectors, just two blocks pointed at the same one with different
+params.
 
 Connectors are referenced by ID from any number of `api`-sourced blocks,
 deleting a connector should warn if blocks still reference it rather

@@ -50,7 +50,11 @@ app.get("/api/connectors/status", (req, res) => {
   const status: Record<string, boolean> = {};
   for (const service of services) {
     const vars = requiredEnvVars(service);
-    status[service] = vars.length > 0 && vars.every((v) => Boolean(process.env[v]));
+    // A service with no required env vars (weather) needs no credential at
+    // all, so it's always connected rather than always "missing" — the
+    // vars.length > 0 case is what still gates a real credential like
+    // GITHUB_TOKEN.
+    status[service] = vars.length === 0 || vars.every((v) => Boolean(process.env[v]));
   }
   res.json(status);
 });

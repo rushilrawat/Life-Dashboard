@@ -327,6 +327,18 @@ renamed to `src/lib/taskActions.ts` in the same pass — it had
 outgrown "just reordering" once toggle-done, rename, and add all
 landed there too.
 
+A thirteenth post-roadmap addition, same session: a second connector
+service, Weather (Open-Meteo), the second-ever proof that the adapter
+pattern from Phase 5 generalizes past GitHub. Two capabilities,
+`current-weather` (`stat-grid`) and `forecast` (`table`), both taking
+just a city name — no API key, no `.env` entry, geocoding and forecast
+are both free unauthenticated endpoints. This is also the first
+service whose adapter declares `requiredEnvVars: []`, which needed one
+small fix to `GET /api/connectors/status`: a zero-length required-vars
+list now means "always connected" rather than "always missing." See
+`ARCHITECTURE.md`'s Connectors section and `DATA_MODEL.md`'s Connector
+section.
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-
