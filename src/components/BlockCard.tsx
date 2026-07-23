@@ -155,6 +155,10 @@ export default function BlockCard({
 
   function startWidthDrag(e: React.PointerEvent) {
     e.preventDefault();
+    // Without capture, the drag silently stalls the moment the pointer
+    // crosses an embed block's <iframe> — a separate browsing context that
+    // otherwise swallows pointermove before it reaches this window listener.
+    e.currentTarget.setPointerCapture(e.pointerId);
     const startX = e.clientX;
     const startCols = block.widthCols;
     const colPx = (cardRef.current?.getBoundingClientRect().width ?? 200) / startCols;
@@ -178,6 +182,7 @@ export default function BlockCard({
 
   function startHeightDrag(e: React.PointerEvent) {
     e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
     const startY = e.clientY;
     const startHeight = block.heightPx ?? bodyRef.current?.getBoundingClientRect().height ?? MIN_HEIGHT_PX;
 

@@ -401,11 +401,15 @@
   background: var(--accent-tint);
 }
 
+/* height: calc(100% - 12px) stops short of the bottom-right corner so the
+   two handles never overlap — without it, the height handle (later in the
+   DOM) always won that 12x12px corner and the width drag was unreachable
+   there. */
 .resize-handle--width {
   top: 0;
   right: -6px;
   width: 12px;
-  height: 100%;
+  height: calc(100% - 12px);
   cursor: ew-resize;
 }
 

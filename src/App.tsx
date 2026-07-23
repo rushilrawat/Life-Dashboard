@@ -20,11 +20,28 @@ export const defaultSettings: Settings = {
 
 type EditorState = { mode: "add" } | { mode: "edit"; block: Block } | null;
 
+// One-time migration for blocks stored before the widthCols schema change
+// (width: "half"|"full" -> widthCols: 1|2|3|4) — legacy data has no
+// widthCols at all, which made every resize computation evaluate to NaN
+// (invalid grid-column, silently ignored, and the drag itself produced no
+// visible feedback). Also repairs a block that already hit that bug and
+// got NaN persisted back as null. A read-boundary normalization, not
+// general defensive coding — untyped localStorage data meeting a type
+// that changed after some data was already written under the old shape.
+function migrateBlocks(raw: Block[]): Block[] {
+  return raw.map((b) => {
+    if (b.widthCols) return b;
+    const legacy = b as Block & { width?: "half" | "full" };
+    const { width, ...rest } = legacy;
+    return { ...rest, widthCols: width === "full" ? 4 : 2 } as Block;
+  });
+}
+
 export default function App() {
   const [settings, setSettings] = useState<Settings>(
     () => storage.get("settings") ?? defaultSettings,
   );
-  const [blocks, setBlocks] = useState<Block[]>(() => storage.get("blocks") ?? []);
+  const [blocks, setBlocks] = useState<Block[]>(() => migrateBlocks(storage.get("blocks") ?? []));
   const [groups, setGroups] = useState<Group[]>(() => storage.get("groups") ?? []);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState>(null);
