@@ -3,18 +3,22 @@ import { useState } from "react";
 import { useDragReorder } from "../../lib/useDragReorder";
 import type { ListResult } from "../../types";
 import { EmptyState } from "../BlockCard";
+import AddTaskRow from "./AddTaskRow";
 import Row from "./Row";
 
 const ROW_CAP = 5;
 
 interface Props {
   result: ListResult;
-  // Present only for local, tasks-sourced blocks (Board.tsx) — undefined
-  // elsewhere renders exactly as before, no drag handle, no rank buttons.
+  // All three present only for local, tasks-sourced blocks (Board.tsx) —
+  // undefined elsewhere renders exactly as before: no drag handle/rank
+  // buttons, no click-to-rename, no add-task row.
   onReorder?: (newOrderedIds: string[]) => void;
+  onRenameTask?: (id: string, title: string) => void;
+  onAddTask?: (task: { title: string; category: string; date: string }) => void;
 }
 
-export default function ListBlock({ result, onReorder }: Props) {
+export default function ListBlock({ result, onReorder, onRenameTask, onAddTask }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   const visible = expanded ? result.items : result.items.slice(0, ROW_CAP);
@@ -23,7 +27,7 @@ export default function ListBlock({ result, onReorder }: Props) {
   const byId = new Map(visible.map((item) => [item.id, item]));
   const { order, draggingId, dragProps } = useDragReorder(ids, onReorder ?? (() => {}));
 
-  if (result.items.length === 0) return <EmptyState />;
+  if (result.items.length === 0 && !onAddTask) return <EmptyState />;
 
   const orderedVisible = draggable ? order.map((id) => byId.get(id)!) : visible;
 
@@ -38,6 +42,7 @@ export default function ListBlock({ result, onReorder }: Props) {
 
   return (
     <div>
+      {result.items.length === 0 && <EmptyState />}
       {orderedVisible.map((item, i) =>
         draggable ? (
           <div
@@ -52,6 +57,7 @@ export default function ListBlock({ result, onReorder }: Props) {
               subtitle={item.subtitle}
               date={item.date}
               tag={item.tag}
+              onRename={item.id && onRenameTask ? (t) => onRenameTask(item.id!, t) : undefined}
             />
             <div className="row-rank-btns">
               <button
@@ -82,6 +88,7 @@ export default function ListBlock({ result, onReorder }: Props) {
             subtitle={item.subtitle}
             date={item.date}
             tag={item.tag}
+            onRename={item.id && onRenameTask ? (t) => onRenameTask(item.id!, t) : undefined}
           />
         ),
       )}
@@ -90,6 +97,7 @@ export default function ListBlock({ result, onReorder }: Props) {
           {expanded ? "Show less" : `Show ${result.items.length - ROW_CAP} more`}
         </button>
       )}
+      {onAddTask && <AddTaskRow onAdd={onAddTask} />}
     </div>
   );
 }

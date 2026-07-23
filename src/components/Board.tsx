@@ -1,8 +1,8 @@
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import type { DragEvent } from "react";
 import { resolveLocal } from "../lib/resolveLocal";
-import { applyDragOrder } from "../lib/reorderTasks";
+import { addTask, applyDragOrder, renameTask, toggleTaskDone } from "../lib/taskActions";
 import * as storage from "../lib/storage";
 import { useDragReorder } from "../lib/useDragReorder";
 import type { DragHandleProps } from "../lib/useDragReorder";
@@ -59,20 +59,45 @@ function useBoardMaxCols(): number {
   return maxCols;
 }
 
+// Bundled rather than four positional params (renderResult/BlockBody were
+// growing one param per task-row feature) — list/progress-list destructure
+// only the handlers they actually use out of this.
+interface TaskHandlers {
+  onReorder: (ids: string[]) => void;
+  onToggleDone: (id: string) => void;
+  onRenameTask: (id: string, title: string) => void;
+  onAddTask: (task: { title: string; category: string; date: string }) => void;
+}
+
 // Dispatch by type only — same result shapes whether they came from
 // resolveLocal() or a sync-cache entry (ARCHITECTURE.md: the block
-// component never knows where its data came from). `onReorder` only ever
-// applies to list/progress-list — every other type ignores the third arg.
-function renderResult(type: Block["type"], result: BlockResult, onReorder?: (ids: string[]) => void) {
+// component never knows where its data came from). `taskHandlers` only ever
+// applies to list/progress-list — every other type ignores it.
+function renderResult(type: Block["type"], result: BlockResult, taskHandlers?: TaskHandlers) {
   switch (type) {
     case "stat":
       return <StatBlock result={result as StatResult} />;
     case "stat-grid":
       return <StatGridBlock result={result as StatGridResult} />;
     case "list":
-      return <ListBlock result={result as ListResult} onReorder={onReorder} />;
+      return (
+        <ListBlock
+          result={result as ListResult}
+          onReorder={taskHandlers?.onReorder}
+          onRenameTask={taskHandlers?.onRenameTask}
+          onAddTask={taskHandlers?.onAddTask}
+        />
+      );
     case "progress-list":
-      return <ProgressListBlock result={result as ProgressListResult} onReorder={onReorder} />;
+      return (
+        <ProgressListBlock
+          result={result as ProgressListResult}
+          onReorder={taskHandlers?.onReorder}
+          onToggleDone={taskHandlers?.onToggleDone}
+          onRenameTask={taskHandlers?.onRenameTask}
+          onAddTask={taskHandlers?.onAddTask}
+        />
+      );
     case "table":
       return <TableBlock result={result as TableResult} />;
     case "chart":
@@ -109,10 +134,11 @@ function resolveBlockData(block: Block): BlockResult | null {
   return resolveLocal(block);
 }
 
-// Drag-to-rank only makes sense for a task-backed local list — nothing to
-// write a manual priority back to for an api-sourced or metrics-sourced
-// block, and table rows aren't reorderable (DESIGN.md/plan scope it out).
-function isDraggableTasksBlock(block: Block): boolean {
+// Task-row mutation (drag-to-rank, toggle-done, rename, add) only makes
+// sense for a task-backed local list — nothing to write back for an
+// api-sourced or metrics-sourced block, and table rows aren't row-level
+// mutable (DESIGN.md/plan scope it out).
+function isTaskMutableBlock(block: Block): boolean {
   return (
     block.source?.kind === "local" &&
     block.source.collection === "tasks" &&
@@ -122,7 +148,7 @@ function isDraggableTasksBlock(block: Block): boolean {
 
 // The one place that resolves a block's source and dispatches to its
 // type's renderer.
-function BlockBody({ block, onReorder }: { block: Block; onReorder?: (ids: string[]) => void }) {
+function BlockBody({ block, taskHandlers }: { block: Block; taskHandlers?: TaskHandlers }) {
   if (block.type === "text") return <TextBlock blockId={block.id} />;
   if (block.type === "links") return <LinksBlock blockId={block.id} widthCols={block.widthCols} />;
   if (block.type === "embed") return <EmbedBlock blockId={block.id} />;
@@ -131,7 +157,7 @@ function BlockBody({ block, onReorder }: { block: Block; onReorder?: (ids: strin
   if (!result) {
     return <EmptyState message={block.source?.kind === "api" ? "Not synced yet" : "Source not configured"} />;
   }
-  return renderResult(block.type, result, isDraggableTasksBlock(block) ? onReorder : undefined);
+  return renderResult(block.type, result, isTaskMutableBlock(block) ? taskHandlers : undefined);
 }
 
 // Generic neighbor-index move callbacks against any ordered `{id}` list —
@@ -366,6 +392,13 @@ export default function Board({
   onToggleSelected,
 }: Props) {
   const maxCols = useBoardMaxCols();
+  // Toggling/renaming/adding a task writes straight to the shared "tasks"
+  // collection (taskActions.ts), which isn't part of App.tsx's blocks/groups
+  // state — nothing would otherwise tell React to re-render and show the
+  // change. Reorder-drag gets this for free by piggybacking on the
+  // onSourceChange call below; the others have no such side effect to ride,
+  // so they bump this counter themselves instead.
+  const [, refreshTasks] = useReducer((n: number) => n + 1, 0);
 
   // `blocks` here is already category-filtered (App.tsx). Looking a group's
   // blockIds up against this same filtered array means a group with no
@@ -457,6 +490,24 @@ export default function Board({
     onSourceChange(block.id, { ...block.source, sort: "priority" });
   }
 
+  function handleToggleDone(block: Block, id: string) {
+    if (block.source?.kind !== "local") return;
+    toggleTaskDone(id);
+    refreshTasks();
+  }
+
+  function handleRenameTask(block: Block, id: string, title: string) {
+    if (block.source?.kind !== "local") return;
+    renameTask(id, title);
+    refreshTasks();
+  }
+
+  function handleAddTask(block: Block, task: { title: string; category: string; date: string }) {
+    if (block.source?.kind !== "local") return;
+    addTask(task);
+    refreshTasks();
+  }
+
   function renderCard(
     block: Block,
     move: ReturnType<typeof neighborMove>,
@@ -481,7 +532,15 @@ export default function Board({
         selected={selectedIds.has(block.id)}
         onToggleSelected={() => onToggleSelected(block.id)}
       >
-        <BlockBody block={block} onReorder={(ids) => handleRowReorder(block, ids)} />
+        <BlockBody
+          block={block}
+          taskHandlers={{
+            onReorder: (ids) => handleRowReorder(block, ids),
+            onToggleDone: (id) => handleToggleDone(block, id),
+            onRenameTask: (id, title) => handleRenameTask(block, id, title),
+            onAddTask: (task) => handleAddTask(block, task),
+          }}
+        />
       </BlockCard>
     );
   }

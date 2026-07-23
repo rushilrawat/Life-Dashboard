@@ -433,7 +433,7 @@ rank button) is never blocked by "wrong sort selected." A drop:
    currently visible in this block untouched, in its existing relative
    position around the ones that moved.
 3. Writes the full task list back with recomputed `priority` values
-   (`src/lib/reorderTasks.ts`).
+   (`src/lib/taskActions.ts`).
 4. Sets that block's own `source.sort` to `"priority"` through the same
    `onSourceChange` path the header's Sort dropdown already uses — this
    is also what makes the UI notice the write: nothing holds `tasks` as
@@ -467,6 +467,43 @@ setting — resets on reload, same content-driven-height spirit as
 everything else about block sizing. When a block is collapsed to its
 top 5, only those 5 are draggable; ranking a row currently hidden by the
 cap means expanding first.
+
+### Toggle-done, rename, and add (post-roadmap)
+
+Three more `tasks`-collection writes, same `local` + `collection: "tasks"`
+gate as drag-to-rank above (`isTaskMutableBlock` in `Board.tsx`), all
+living in `src/lib/taskActions.ts` alongside `applyDragOrder`:
+
+- **Toggle-done**: `progress-list`'s 0%/100% checkbox (`DESIGN.md`'s
+  checkbox/bar dual rendering) is a real `<button>` when task-backed,
+  flipping `percent` between `0` and `100` on click.
+- **Rename**: any task row's title (`list` and `progress-list` both) is
+  click-to-edit, same pattern as a group's click-to-rename title —
+  `Row.tsx` owns the inline input so both block types share one
+  implementation instead of two.
+- **Add**: a small inline form (`AddTaskRow.tsx`, shared by `list` and
+  `progress-list`) at the bottom of a task-backed block — title,
+  category (plain text, no autocomplete), and date (defaults to today).
+  A new task's `priority` is appended past every existing task's, same
+  "goes at the end" rule `swapOrder`/`reorderTopLevel` already use for
+  top-level order. A task added with a date outside the block's own
+  active filter (e.g. added via a `"this-week"`-filtered view but dated
+  next month) simply won't render in *that* block, same as any other
+  filtered-out row — expected, not special-cased.
+
+None of these three route through `onSourceChange` the way drag-to-rank
+does, so none of them get a re-render for free from a `source` field
+changing. `Board.tsx` holds one `useReducer`-based counter
+(`refreshTasks`) bumped after each write instead — same purpose as
+drag-to-rank's `onSourceChange` piggyback, just its own dedicated
+mechanism since there's no `source` field these three could plausibly
+piggyback on without misrepresenting what changed.
+
+Overdue task rows (`percent < 100` and `date` before today) color their
+trailing date `--danger` in `progress-list` only — `list` items carry no
+`percent`, so there's no reliable way to tell a legitimately overdue row
+from a completed one with a past date without the schema change that
+would take. See `DESIGN.md`'s Row anatomy section.
 
 ## Command palette and keyboard shortcuts
 

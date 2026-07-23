@@ -310,6 +310,23 @@ out of its group." Fixed with a third case, `isDropInOwnGroup`, that
 swallows the event as a genuine no-op instead. See `ARCHITECTURE.md`'s
 Groups section, "How reorder-drag and group-drag coexist."
 
+An eleventh post-roadmap addition, same session: `progress-list`'s
+checkbox states (`percent: 0`/`100`) became a real, tappable `<button>`
+for local tasks-sourced blocks instead of a decorative icon — tapping
+flips the task between not-started and done. Board.tsx didn't have
+anything to force a re-render on this write (it doesn't touch
+`blocks`/`groups` state), so it gained a small dedicated
+`useReducer`-based refresh counter for it.
+
+A twelfth post-roadmap addition, same session: task creation, rename,
+and overdue highlighting — the first UI in this app that can actually
+create a `Task`, not just seed/hand-edit one. See `ARCHITECTURE.md`'s
+new "Toggle-done, rename, and add" section and `DESIGN.md`'s Row
+anatomy section for the full spec. `src/lib/reorderTasks.ts` was
+renamed to `src/lib/taskActions.ts` in the same pass — it had
+outgrown "just reordering" once toggle-done, rename, and add all
+landed there too.
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-

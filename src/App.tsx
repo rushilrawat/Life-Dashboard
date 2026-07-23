@@ -146,7 +146,7 @@ export default function App() {
   // filter, or a block/group tucked inside the hero band) in its new drag
   // order — walk the *full* order-sorted universe substituting just that
   // subset's new positions, so anything not currently visible keeps its
-  // exact relative position, same pattern reorderTasks.ts already
+  // exact relative position, same pattern taskActions.ts already
   // established for row-level drag-to-rank.
   function reorderTopLevel(visibleOrderedIds: string[]) {
     const all = [...blocks, ...groups].map((x) => ({ id: x.id, order: x.order })).sort((a, b) => a.order - b.order);

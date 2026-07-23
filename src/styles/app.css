@@ -1020,6 +1020,20 @@
   justify-content: center;
 }
 
+.row-check-btn {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: none;
+  display: flex;
+  cursor: pointer;
+}
+
+.row-check-btn:hover {
+  opacity: 0.7;
+}
+
 .row-main {
   flex: 1;
   min-width: 0;
@@ -1034,6 +1048,16 @@
 .row-title.done {
   text-decoration: line-through;
   color: var(--text-muted);
+}
+
+.row-title.editable {
+  cursor: pointer;
+}
+
+.row-title-input {
+  width: 100%;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .row-subtitle {
@@ -1058,6 +1082,10 @@
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
+}
+
+.row-date-overdue {
+  color: var(--danger);
 }
 
 .progress-bar-track {

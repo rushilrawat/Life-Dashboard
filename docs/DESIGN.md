@@ -329,6 +329,27 @@ the drag, not a secondary affordance, so it never hides behind hover.
 See `ARCHITECTURE.md`'s Task priority section for what a drop actually
 does.
 
+**Click-to-rename** (`list`/`progress-list`, local tasks source only):
+clicking a row's title swaps it for a text input in place, `cursor:
+pointer` on the plain title as the only hint it's editable — same
+pattern as a group's click-to-rename title, commit on blur or Enter, no
+Cancel/Escape affordance (matching the group title precedent).
+
+**Add-task row**: a task-backed `list`/`progress-list` gets a small
+inline form below its rows (and below the "Show more" toggle when
+present) — one row for the title input, a second row for a plain-text
+category input, a native date input (defaults to today), and an "Add"
+button. Same visual language as the Links block's own add-link form
+(`.link-add-form`/`.link-add-row`/`.text-input`, `.sync-btn` for Add),
+not a new form style.
+
+**Overdue date**: `progress-list` only. A row whose task is past its
+date and not yet at `percent: 100` gets its trailing date colored
+`--danger` — the same reserved "overdue" semantic color this doc
+already names, just newly wired to a row instead of only a status dot.
+`list` rows don't carry `percent`, so they don't get this treatment (see
+`ARCHITECTURE.md`'s Toggle-done, rename, and add section).
+
 ## Sidebar
 
 Fixed left column, `--surface` background, `1px solid var(--border)`
