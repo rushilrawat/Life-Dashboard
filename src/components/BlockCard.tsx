@@ -1,10 +1,11 @@
-import { ArrowDown, ArrowUp, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import GroupPicker from "./GroupPicker";
 import type { GroupControls } from "./GroupPicker";
 import { FILTER_OPTIONS, SORT_OPTIONS } from "../lib/localSourceOptions";
 import * as storage from "../lib/storage";
+import type { DragHandleProps } from "../lib/useDragReorder";
 import type { Block, LocalSource } from "../types";
 
 export function timeAgo(iso: string): string {
@@ -29,6 +30,8 @@ interface Props {
   onDelete: () => void;
   onSourceChange: (source: LocalSource) => void;
   groupControls: GroupControls;
+  dragHandleProps: DragHandleProps;
+  isDragging: boolean;
 }
 
 interface KebabProps {
@@ -139,7 +142,10 @@ export default function BlockCard({
   onDelete,
   onSourceChange,
   groupControls,
+  dragHandleProps,
+  isDragging,
 }: Props) {
+  const { draggable, onDragStart, onDragEnd, onDragOver, onDrop } = dragHandleProps;
   const local = block.source?.kind === "local" ? block.source : null;
   const syncCache = block.source?.kind === "api" ? storage.get(`sync-cache:${block.id}`) : null;
 
@@ -212,8 +218,17 @@ export default function BlockCard({
   }
 
   return (
-    <div className="card" ref={cardRef} style={{ gridColumn: `span ${effectiveWidthCols}` }}>
+    <div
+      className={`card${isDragging ? " dragging" : ""}`}
+      ref={cardRef}
+      style={{ gridColumn: `span ${effectiveWidthCols}` }}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
       <div className="card-header">
+        <span className="card-drag-handle" draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+          <GripVertical size={14} />
+        </span>
         <h2 className="card-title">{block.title}</h2>
         <div className="card-header-right">
           {syncCache?.stale && (

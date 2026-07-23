@@ -65,11 +65,11 @@ export default function App() {
 
   const updateSettings = (patch: Partial<Settings>) => setSettings((s) => ({ ...s, ...patch }));
 
-  // The only top-level reordering mechanism (no drag, no coordinates): swap
-  // the `order` field between two top-level items. A group and an ungrouped
-  // block share the same order namespace (Group.order / Block.order), so
-  // idA/idB can be either kind — Board passes whichever's on-screen neighbor,
-  // same as before groups existed.
+  // Kebab's Move up/Move down: swap the `order` field between two top-level
+  // items. A group and an ungrouped block share the same order namespace
+  // (Group.order / Block.order), so idA/idB can be either kind — Board
+  // passes whichever's on-screen neighbor, same as before groups existed.
+  // The keyboard-reachable equivalent of reorderTopLevel's drag, below.
   function swapOrder(idA: string, idB: string) {
     const orderOf = (id: string) => blocks.find((b) => b.id === id)?.order ?? groups.find((g) => g.id === id)?.order;
     const aOrder = orderOf(idA);
@@ -77,6 +77,23 @@ export default function App() {
     if (aOrder === undefined || bOrder === undefined) return;
     setBlocks((bs) => bs.map((b) => (b.id === idA ? { ...b, order: bOrder } : b.id === idB ? { ...b, order: aOrder } : b)));
     setGroups((gs) => gs.map((g) => (g.id === idA ? { ...g, order: bOrder } : g.id === idB ? { ...g, order: aOrder } : g)));
+  }
+
+  // Drag-to-reorder the board's top-level list (Board.tsx's grip handles).
+  // `visibleOrderedIds` is only the currently-visible subset (a category
+  // filter, or a block/group tucked inside the hero band) in its new drag
+  // order — walk the *full* order-sorted universe substituting just that
+  // subset's new positions, so anything not currently visible keeps its
+  // exact relative position, same pattern reorderTasks.ts already
+  // established for row-level drag-to-rank.
+  function reorderTopLevel(visibleOrderedIds: string[]) {
+    const all = [...blocks, ...groups].map((x) => ({ id: x.id, order: x.order })).sort((a, b) => a.order - b.order);
+    const visible = new Set(visibleOrderedIds);
+    const queue = [...visibleOrderedIds];
+    const finalIds = all.map((e) => (visible.has(e.id) ? queue.shift()! : e.id));
+    const orderById = new Map(finalIds.map((id, i) => [id, i]));
+    setBlocks((bs) => bs.map((b) => (orderById.has(b.id) ? { ...b, order: orderById.get(b.id)! } : b)));
+    setGroups((gs) => gs.map((g) => (orderById.has(g.id) ? { ...g, order: orderById.get(g.id)! } : g)));
   }
 
   // Reordering *within* a group is a separate axis from top-level order —
@@ -249,6 +266,7 @@ export default function App() {
           onAddBlock={() => setEditor({ mode: "add" })}
           onEditBlock={(block) => setEditor({ mode: "edit", block })}
           onSwapOrder={swapOrder}
+          onReorderTopLevel={reorderTopLevel}
           onResizeBlock={resizeBlock}
           onDeleteBlock={deleteBlock}
           onSourceChange={updateSource}

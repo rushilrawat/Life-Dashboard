@@ -226,11 +226,51 @@ new field on `Block`, so `DATA_MODEL.md` doesn't change. See `DESIGN.md`'s
 Hero band section for the visual spec and the reasoning (a glanceable
 focal point only makes sense for the whole board, not a filtered slice).
 
-Reordering stays the single swap-two-ids mechanism `App.tsx.swapOrder`
-already implements; a hero tile's Move Up/Down just resolves its
+Kebab's Move Up/Move Down still uses the single swap-two-ids mechanism
+`App.tsx.swapOrder` implements; a hero tile's version just resolves its
 neighbor from the hero-only sub-list instead of the full board, so it
 reorders visibly within the strip instead of silently matching against
-a grid card it isn't rendered next to.
+a grid card it isn't rendered next to. The grid's own top-level items
+(ungrouped blocks and groups) also have a drag-and-drop path now, see
+the next section — the hero band doesn't, hero tiles keep kebab-only
+reordering, unchanged.
+
+## Board reordering: drag-and-drop
+
+A reversal, not a scoped exception (`CLAUDE.md`'s Block position
+bullet) — reorder-via-drop-position within the existing dense CSS
+grid, never a freeform pixel/absolute canvas. Reuses
+`src/lib/useDragReorder.ts` as-is, the same hook that already powers
+row-level drag-to-rank inside `list`/`progress-list` blocks — it's
+fully generic over `ids: string[]` and doesn't care what they
+represent.
+
+- **Scope**: `Board.tsx`'s top-level list only (ungrouped blocks and
+  groups together, same list Move Up/Down already operates over). The
+  hero band and intra-group member order are both unaffected — neither
+  was asked for, both stay kebab-only.
+- **Grip handle**: a dedicated `GripVertical` element leading the card
+  or group header (`.card-drag-handle`), not the whole header —
+  deliberately narrower than the row-level drag's whole-row-wrapper
+  approach, since a card header has far more interactive chrome
+  (filter/sort selects, `GroupPicker`, edit pencil, kebab, a group's
+  click-to-rename title) than a list row does. `dragProps(id)`'s five
+  handlers split across two elements: `draggable`/`onDragStart`/
+  `onDragEnd` on the grip (the drag *source*), `onDragOver`/`onDrop` on
+  the outer card (the drop *target*, so hovering anywhere on another
+  card registers the reorder, not just its 14px grip).
+- **Commit**: `App.tsx`'s `reorderTopLevel(visibleOrderedIds)`, mirroring
+  `reorderTasks.ts`'s index-reassignment approach — walk the *full*
+  order-sorted union of `blocks` and `groups`, substituting just the
+  dragged list's new positions in, and reindex everything 0..N-1. Since
+  `App.tsx` owns the complete, unfiltered `blocks`/`groups`, a category
+  filter or the hero band naturally narrows what `Board.tsx` ever passes
+  as the visible/draggable set — anything not currently on screen keeps
+  its exact relative position, no special-casing needed.
+- **Keyboard equivalent**: already existed — kebab's Move Up/Move Down
+  predates this drag entirely, so no new accessibility work was needed
+  here (unlike resize, which had to invent Wider/Narrower/Taller/
+  Shorter from scratch).
 
 ## Resize (width and height)
 
@@ -283,22 +323,47 @@ pattern `BlockCard.tsx` uses for a resizable card, just always maxed
 out rather than reading a stored value) — a group is never itself
 resized, only the blocks inside it are.
 
-- **Assignment lives on the block, not the group**: `GroupPicker.tsx`,
-  a small icon button next to the pencil/kebab on every regular card
-  (not the hero band, see below), deliberately separate from
-  `KebabMenu` so the shared kebab component (used by both regular cards
-  and hero tiles) doesn't need to know about groups at all. Ungrouped
-  shows an "add to group" icon opening a small dropdown: pick an
-  existing group, or name a new one inline (same "swap the row/dropdown
-  for a form" pattern as everywhere else in this app — no native
-  `prompt()`). Already-grouped shows a single "remove from group" icon,
-  no dropdown needed since there's only one thing to do.
+- **Assignment lives on the block, not the group**, two ways now:
+  `GroupPicker.tsx` (a small icon button next to the pencil/kebab on
+  every regular card, not the hero band, see below), deliberately
+  separate from `KebabMenu` so the shared kebab component (used by both
+  regular cards and hero tiles) doesn't need to know about groups at
+  all. Ungrouped shows an "add to group" icon opening a small dropdown:
+  pick an existing group, or name a new one inline (same "swap the
+  row/dropdown for a form" pattern as everywhere else in this app — no
+  native `prompt()`). Already-grouped shows a single "remove from
+  group" icon, no dropdown needed since there's only one thing to do.
+  The *second* way is dragging: drop a plain ungrouped block onto a
+  `GroupSection` (collapsed or expanded) to join it, drag a grouped
+  block out onto the open board to leave — layered on top of the same
+  drag-and-drop mechanism the previous section describes, see that
+  section's sibling note below for how the two drag systems coexist on
+  one gesture.
 - **New group**: created the first time a block is assigned to one
   (`onCreateGroupWith` in `App.tsx`) — there's no separate "create empty
   group" flow, a group with nothing in it has nothing to collapse or
   move as a unit. The new group's `order` takes over the block's old
   top-level slot, so it appears right where the block used to be rather
   than jumping to the end of the board.
+- **How reorder-drag and group-drag coexist**: one `draggingBlockId`
+  signal in `Board.tsx`, set the moment *any* block's grip starts a
+  drag (an ungrouped block's `onDragStart` sets it alongside the normal
+  top-level-reorder `dragProps`; a grouped block's grip sets it via
+  plain, hook-independent `draggable`/`onDragStart` props, since a
+  grouped block has no top-level reorder role at all — it isn't in
+  `topLevelIds`). A `GroupSection`'s drop handler checks this signal
+  first: if it's a plain ungrouped block not already in *this* group,
+  the drop means "join," full stop — dropping squarely on a group never
+  means "reorder relative to it." Only when that check fails (dragging
+  a group itself, or another top-level block, or a block that's already
+  grouped) does the drop fall through to the normal reorder handling
+  from the section above. Dropping a grouped block anywhere that isn't
+  a group it can join (the open board background, or a group it
+  declines) bubbles to `Board.tsx`'s own `<section className="board">`
+  drop handler, which removes it from its group — every more specific
+  handler calls `stopPropagation()` when it actually acts, so this
+  board-level handler only ever sees a drop nothing more specific
+  wanted.
 - **Ordering**: top-level board order interleaves ungrouped blocks and
   groups by comparing whichever of `Block.order` / `Group.order`
   applies (`App.tsx.swapOrder`, generalized to look up either

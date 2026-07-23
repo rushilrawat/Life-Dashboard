@@ -71,3 +71,9 @@ export function useDragReorder(ids: string[], onDrop: (newOrder: string[]) => vo
 
   return { order: currentOrder, draggingId, dragProps };
 }
+
+// The shape `dragProps(id)` returns — named so callers that split it across
+// two elements (a drag-source handle plus a separate drop-target wrapper,
+// e.g. Board.tsx's board-level reorder) can type the pieces without
+// depending on this hook's internal generics.
+export type DragHandleProps = ReturnType<ReturnType<typeof useDragReorder>["dragProps"]>;

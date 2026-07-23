@@ -234,20 +234,44 @@ category filter simply doesn't render, same as an ordinary filtered-out
 block. See `ARCHITECTURE.md`'s Groups section and `DESIGN.md`'s Groups
 section for the full spec.
 
+Two more post-roadmap changes landed in the same pass as a bug fix.
+First, the fix: resize had shipped as a no-op for every block created
+before the `widthCols` schema change — `App.tsx` never migrated legacy
+`width: "half"|"full"` data, so `widthCols` read as `undefined` at
+runtime and every resize computation evaluated to `NaN`. Fixed with a
+one-time migration in `App.tsx`'s `blocks` initializer, plus
+`setPointerCapture` on the resize handles (closes a real gap where
+dragging across an `embed` block's `<iframe>` could silently stall the
+drag) and a fix for the two resize handles overlapping ~12px at a
+card's corner.
+
+Second, a seventh post-roadmap addition: drag-and-drop board reordering
+(`Block`/`Group` position — see `CLAUDE.md`'s Block position bullet for
+why this is a genuine reversal, not a scoped exception) and, layered on
+top of it, dragging a block into or out of a group as a second path
+alongside `GroupPicker`'s menu. Both reuse `useDragReorder`, the same
+hook already powering row-level drag-to-rank, rather than introducing
+new drag infrastructure. See `ARCHITECTURE.md`'s Board reordering
+section and the Groups section's "How reorder-drag and group-drag
+coexist" note for the mechanism, and `DESIGN.md`'s Drag handle section
+for the visual spec.
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-
 build, they were cut deliberately, see `CLAUDE.md`:
 
-- Drag-to-position (block layout on the board) — still out of scope,
-  reordering stays the up/down-in-the-kebab mechanism. Row-level
+- Drag-to-*position* — reversed post-roadmap (see below), same as
+  freeform resize, both at explicit request after being told each
+  conflicted with the original cut. What's still out of scope: free
+  pixel/absolute placement. The reversal is drag-to-*reorder* only —
+  dropping a card determines its new index in the board's order, same
+  underlying mechanism `Move up`/`Move down` already used, just with a
+  drag gesture added on top, not a coordinate-based canvas. Row-level
   drag-to-rank *inside* a list/progress-list block's task data (added
-  post-Phase-6, see below) is a different axis and doesn't reverse
-  this; see `CLAUDE.md`'s non-negotiable for the distinction spelled
-  out. Freeform *resize*, by contrast, was reversed post-roadmap (see
-  below) — the two were cut together originally but aren't the same
-  axis either, and only one of them got a specific new reason to come
-  back.
+  post-Phase-6, see below) was always a different, older axis and
+  doesn't reverse or get reversed by any of this; see `CLAUDE.md`'s
+  Block position bullet for the full distinction.
 - A general-purpose iframe/custom-code block type — still out of
   scope. The curated `embed` primitive (added post-roadmap, allowlisted
   providers only: YouTube, Google Sheets, Figma, Loom) is a different,

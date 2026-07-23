@@ -42,28 +42,35 @@ enough for a single-page, single-user tool.
 These were cut on purpose after scoping a larger version. Do not add
 them back without a specific new reason, "would be nice" is not one.
 
-- No pixel drag-to-position. Blocks move via up/down controls only.
-  (This governs block position on the board grid. Row-level
-  drag-to-set-priority inside `list`/`progress-list` blocks — see
-  `docs/ARCHITECTURE.md`'s Task priority section — is a different axis
-  entirely, it never touches `Block.order` or the grid, and isn't what
-  this rule is about. It also ships with a full non-drag keyboard
-  equivalent, unlike block reordering which never needed one since
-  Move up/down already was the keyboard-accessible mechanism.)
-- Resize is grid-snapped, not fully arbitrary. This one was reversed
-  (not just carved a scoped exception, unlike the iframe rule below) at
-  the person's explicit request, after being told it conflicted with
-  the original cut. Width is `Block.widthCols` (1-4, columns spanned out
-  of the board's 4-column grid), height is `Block.heightPx`, an optional
-  override with internal scroll past it — content-driven when absent.
-  Both are drag-resizable (a card's right/bottom edge handles,
-  `BlockCard.tsx`), snapped to the column grid rather than free pixels
-  or position, so CSS Grid, the hero band, and the responsive
-  breakpoints all stay meaningful without a canvas-layout rewrite.
-  Kebab's Wider/Narrower/Taller/Shorter/Reset height buttons are the
-  keyboard-reachable equivalent of the drag, same pattern as
-  drag-to-rank's rank buttons. Block *position* on the board grid is
-  untouched by this and stays up/down-only, see the bullet above.
+- Block position is drag-to-reorder, not pixel-to-position. This was
+  originally "no drag at all, up/down controls only," reversed at the
+  person's explicit request after being told it conflicted with the cut
+  — a genuine reversal, like resize below, not a scoped exception like
+  the iframe rule further down. What's still true of the original
+  intent: it's reorder-within-the-grid via drop position
+  (`useDragReorder`, the same hook row-level drag-to-rank already used),
+  never free pixel/absolute placement — dropping a card determines its
+  new *index* in the board's order, not an x/y coordinate. Kebab's Move
+  up/Move down is the keyboard-reachable equivalent and was already
+  there before the drag existed, so no new accessibility work was
+  needed for this one (unlike resize, which had to invent one). A
+  group and an ungrouped block share one order namespace (`Group.order`/
+  `Block.order`) and reorder together as a single top-level list, see
+  `docs/ARCHITECTURE.md`'s Groups section. Row-level drag-to-set-priority
+  inside `list`/`progress-list` blocks (`docs/ARCHITECTURE.md`'s Task
+  priority section) is a separate, older, still-distinct axis — it never
+  touched `Block.order` or the grid either before or after this reversal.
+- Resize is grid-snapped, not fully arbitrary. Reversed at the same time
+  and for the same reason as block position above. Width is
+  `Block.widthCols` (1-4, columns spanned out of the board's 4-column
+  grid), height is `Block.heightPx`, an optional override with internal
+  scroll past it — content-driven when absent. Both are drag-resizable
+  (a card's right/bottom edge handles, `BlockCard.tsx`), snapped to the
+  column grid rather than free pixels or position, so CSS Grid, the
+  hero band, and the responsive breakpoints all stay meaningful without
+  a canvas-layout rewrite. Kebab's Wider/Narrower/Taller/Shorter/Reset
+  height buttons are the keyboard-reachable equivalent of the drag, same
+  pattern as drag-to-rank's rank buttons.
 - No general-purpose iframe/custom-code escape hatch. The one exception
   is `embed` (see the block-type count below): a curated primitive that
   only recognizes a fixed allowlist of providers (YouTube, Google
@@ -75,9 +82,13 @@ them back without a specific new reason, "would be nice" is not one.
   not widening the hatch.
 - Settings (gear icon) holds exactly two things: connector management
   and accent theme. Nothing else lives there.
-- Every other block-level action, edit, reorder, resize, delete, lives
-  on the block itself via its kebab menu. Never route a block action
-  through a global settings screen.
+- Every other block-level action, edit, reorder, resize, delete, group
+  assignment, lives on the block itself — its kebab menu for most of
+  these, or a small adjacent control when a menu item doesn't fit
+  (`GroupPicker.tsx`, next to the kebab, kept separate specifically so
+  the kebab component shared with the hero band doesn't need to know
+  about groups at all). Never route a block action through a global
+  settings screen.
 - Never call a third-party service's API from browser code. Every
   service credential (`GITHUB_TOKEN`, and any future service's key)
   lives server-side only, behind the backend proxy.

@@ -1,6 +1,7 @@
-import { ChevronDown, ChevronRight, MoreVertical, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, GripVertical, MoreVertical, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { DragEvent, ReactNode } from "react";
+import type { DragHandleProps } from "../lib/useDragReorder";
 import type { Group } from "../types";
 
 interface KebabProps {
@@ -76,6 +77,15 @@ interface Props extends KebabProps {
   maxCols: number;
   onToggleCollapsed: () => void;
   onRename: (title: string) => void;
+  dragHandleProps: DragHandleProps;
+  isDragging: boolean;
+  // True while a plain ungrouped block is being dragged and could join this
+  // group by being dropped on it — see Board.tsx for how this is computed.
+  // When false, a drop here falls through to the normal top-level reorder
+  // behavior carried by `dragHandleProps` instead (dragging this group, or
+  // another top-level block/group, past this one to reorder it).
+  canAcceptBlockDrop: boolean;
+  onAcceptBlockDrop: () => void;
   children: ReactNode;
 }
 
@@ -86,9 +96,22 @@ interface Props extends KebabProps {
 // rather than reading from a stored value. Title is click-to-rename
 // directly (no kebab round-trip needed for a single text field); the kebab
 // holds move/delete instead.
-export default function GroupSection({ group, memberCount, maxCols, onToggleCollapsed, onRename, children, ...kebab }: Props) {
+export default function GroupSection({
+  group,
+  memberCount,
+  maxCols,
+  onToggleCollapsed,
+  onRename,
+  dragHandleProps,
+  isDragging,
+  canAcceptBlockDrop,
+  onAcceptBlockDrop,
+  children,
+  ...kebab
+}: Props) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(group.title);
+  const { draggable, onDragStart, onDragEnd, onDragOver, onDrop } = dragHandleProps;
 
   function commitTitle() {
     setEditingTitle(false);
@@ -97,9 +120,39 @@ export default function GroupSection({ group, memberCount, maxCols, onToggleColl
     else setTitleDraft(group.title);
   }
 
+  // Two different drags can land here: a plain ungrouped block (join this
+  // group) or a top-level reorder drag (this group's own position among
+  // siblings) — `canAcceptBlockDrop` picks between them per drop, see the
+  // prop's own comment above for why they can't just be two separate
+  // handlers on the same element.
+  function handleDragOver(e: DragEvent) {
+    if (canAcceptBlockDrop) {
+      e.preventDefault();
+      return;
+    }
+    onDragOver(e);
+  }
+  function handleDrop(e: DragEvent) {
+    if (canAcceptBlockDrop) {
+      e.preventDefault();
+      onAcceptBlockDrop();
+      e.stopPropagation();
+      return;
+    }
+    onDrop(e);
+  }
+
   return (
-    <div className="card group-section" style={{ gridColumn: `span ${maxCols}` }}>
+    <div
+      className={`card group-section${isDragging ? " dragging" : ""}`}
+      style={{ gridColumn: `span ${maxCols}` }}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <div className="group-header">
+        <span className="card-drag-handle" draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+          <GripVertical size={14} />
+        </span>
         <button
           className="icon-btn group-collapse-toggle"
           type="button"

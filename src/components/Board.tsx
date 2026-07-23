@@ -1,8 +1,11 @@
 import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { DragEvent } from "react";
 import { resolveLocal } from "../lib/resolveLocal";
 import { applyDragOrder } from "../lib/reorderTasks";
 import * as storage from "../lib/storage";
+import { useDragReorder } from "../lib/useDragReorder";
+import type { DragHandleProps } from "../lib/useDragReorder";
 import type {
   Block,
   BlockResult,
@@ -320,6 +323,7 @@ interface Props {
   onAddBlock: () => void;
   onEditBlock: (block: Block) => void;
   onSwapOrder: (idA: string, idB: string) => void;
+  onReorderTopLevel: (visibleOrderedIds: string[]) => void;
   onResizeBlock: (id: string, widthCols: Block["widthCols"], heightPx: number | undefined) => void;
   onDeleteBlock: (id: string) => void;
   onSourceChange: (id: string, source: LocalSource) => void;
@@ -343,6 +347,7 @@ export default function Board({
   onAddBlock,
   onEditBlock,
   onSwapOrder,
+  onReorderTopLevel,
   onResizeBlock,
   onDeleteBlock,
   onSourceChange,
@@ -383,6 +388,58 @@ export default function Board({
 
   const allGroupsForPicker = groups.map((g) => ({ id: g.id, title: g.title }));
 
+  // Drag-to-reorder the board's top-level list (grip handles in
+  // BlockCard/GroupSection). `topLevel`'s own ids drive the hook; the live,
+  // mid-drag order it returns is what actually renders, so a drop's visual
+  // preview matches what onReorderTopLevel commits.
+  const topLevelIds = topLevel.map((e) => e.id);
+  const {
+    order: liveTopLevelOrder,
+    draggingId: draggingTopLevelId,
+    dragProps: topLevelDragProps,
+  } = useDragReorder(topLevelIds, onReorderTopLevel);
+  const topLevelById = new Map(topLevel.map((e) => [e.id, e]));
+  const orderedTopLevel = liveTopLevelOrder.map((id) => topLevelById.get(id)!);
+
+  // A second, simpler drag signal layered on the reorder one above: which
+  // *block* (never a group) is currently being dragged, whether via a
+  // top-level grip or a grouped block's own grip — drives GroupSection's
+  // drop target (join a group) and the board's own drop target (leave
+  // one). See ARCHITECTURE.md's Groups section for the full reasoning.
+  const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null);
+  const isDraggingBlockGrouped = draggingBlockId !== null && groups.some((g) => g.blockIds.includes(draggingBlockId));
+
+  // An ungrouped block's grip drives top-level reorder (like any other
+  // top-level entry) *and* announces itself as a candidate to join a group.
+  function topLevelBlockDragHandleProps(id: string): DragHandleProps {
+    const base = topLevelDragProps(id);
+    return {
+      ...base,
+      onDragStart: () => {
+        base.onDragStart();
+        setDraggingBlockId(id);
+      },
+      onDragEnd: () => {
+        base.onDragEnd();
+        setDraggingBlockId(null);
+      },
+    };
+  }
+
+  // A grouped block's grip has no top-level reorder role (it isn't in
+  // `topLevelIds` at all) — it's a drag *source* only, plain DOM props,
+  // no hook involvement. onDragOver/onDrop stay no-ops since intra-group
+  // member order is kebab-only in this pass, not drag-reorderable.
+  function groupedBlockDragHandleProps(id: string): DragHandleProps {
+    return {
+      draggable: true,
+      onDragStart: () => setDraggingBlockId(id),
+      onDragOver: () => {},
+      onDrop: () => {},
+      onDragEnd: () => setDraggingBlockId(null),
+    };
+  }
+
   // Drag (or a rank-up/down click) always applies, regardless of the
   // block's current sort — a drop writes the new task priorities, then
   // flips this block's sort to "priority" through the same onSourceChange
@@ -394,7 +451,13 @@ export default function Board({
     onSourceChange(block.id, { ...block.source, sort: "priority" });
   }
 
-  function renderCard(block: Block, move: ReturnType<typeof neighborMove>, groupControls: GroupControls) {
+  function renderCard(
+    block: Block,
+    move: ReturnType<typeof neighborMove>,
+    groupControls: GroupControls,
+    dragHandleProps: DragHandleProps,
+    isDragging: boolean,
+  ) {
     return (
       <BlockCard
         key={block.id}
@@ -406,6 +469,8 @@ export default function Board({
         onDelete={() => onDeleteBlock(block.id)}
         onSourceChange={(source) => onSourceChange(block.id, source)}
         groupControls={groupControls}
+        dragHandleProps={dragHandleProps}
+        isDragging={isDragging}
       >
         <BlockBody block={block} onReorder={(ids) => handleRowReorder(block, ids)} />
       </BlockCard>
@@ -423,19 +488,40 @@ export default function Board({
           onDeleteBlock={onDeleteBlock}
         />
       )}
-      <section className="board" aria-label="Board">
-        {topLevel.map((entry, i) => {
-          const move = neighborMove(topLevel, i, onSwapOrder);
+      <section
+        className="board"
+        aria-label="Board"
+        onDragOver={(e: DragEvent) => {
+          if (isDraggingBlockGrouped) e.preventDefault();
+        }}
+        onDrop={(e: DragEvent) => {
+          if (isDraggingBlockGrouped && draggingBlockId) {
+            e.preventDefault();
+            onRemoveBlockFromGroup(draggingBlockId);
+          }
+        }}
+      >
+        {orderedTopLevel.map((entry, i) => {
+          const move = neighborMove(orderedTopLevel, i, onSwapOrder);
 
           if (entry.kind === "block") {
-            return renderCard(entry.block, move, {
-              groups: allGroupsForPicker,
-              currentGroupId: undefined,
-              onAddToGroup: (groupId) => onAddBlockToGroup(entry.block.id, groupId),
-              onCreateGroupWith: (title) => onCreateGroupWithBlock(entry.block.id, title),
-              onRemoveFromGroup: () => {},
-            });
+            return renderCard(
+              entry.block,
+              move,
+              {
+                groups: allGroupsForPicker,
+                currentGroupId: undefined,
+                onAddToGroup: (groupId) => onAddBlockToGroup(entry.block.id, groupId),
+                onCreateGroupWith: (title) => onCreateGroupWithBlock(entry.block.id, title),
+                onRemoveFromGroup: () => {},
+              },
+              topLevelBlockDragHandleProps(entry.id),
+              draggingTopLevelId === entry.id,
+            );
           }
+
+          const canAcceptBlockDrop =
+            draggingBlockId !== null && !isDraggingBlockGrouped && !entry.group.blockIds.includes(draggingBlockId);
 
           return (
             <GroupSection
@@ -447,15 +533,25 @@ export default function Board({
               onToggleCollapsed={() => onToggleGroupCollapsed(entry.group.id)}
               onRename={(title) => onRenameGroup(entry.group.id, title)}
               onDelete={(alsoDeleteBlocks) => onDeleteGroup(entry.group.id, alsoDeleteBlocks)}
+              dragHandleProps={topLevelDragProps(entry.id)}
+              isDragging={draggingTopLevelId === entry.id}
+              canAcceptBlockDrop={canAcceptBlockDrop}
+              onAcceptBlockDrop={() => draggingBlockId && onAddBlockToGroup(draggingBlockId, entry.group.id)}
             >
               {entry.members.map((block, j) =>
-                renderCard(block, neighborMove(entry.members, j, (a, b) => onSwapWithinGroup(entry.group.id, a, b)), {
-                  groups: allGroupsForPicker,
-                  currentGroupId: entry.group.id,
-                  onAddToGroup: () => {},
-                  onCreateGroupWith: () => {},
-                  onRemoveFromGroup: () => onRemoveBlockFromGroup(block.id),
-                }),
+                renderCard(
+                  block,
+                  neighborMove(entry.members, j, (a, b) => onSwapWithinGroup(entry.group.id, a, b)),
+                  {
+                    groups: allGroupsForPicker,
+                    currentGroupId: entry.group.id,
+                    onAddToGroup: () => {},
+                    onCreateGroupWith: () => {},
+                    onRemoveFromGroup: () => onRemoveBlockFromGroup(block.id),
+                  },
+                  groupedBlockDragHandleProps(block.id),
+                  draggingBlockId === block.id,
+                ),
               )}
             </GroupSection>
           );

@@ -218,6 +218,21 @@ header) scroll internally past that height rather than clipping
 silently; the header — title, filter/sort dropdowns, edit pencil,
 kebab — always stays fully visible regardless of a height override.
 
+## Drag handle (board reorder)
+
+A `GripVertical` icon (`lucide-react`, 14px) leads every card and
+group header — the very first element, before the title (and before a
+group's collapse chevron). `--text-muted` at rest, `--text-secondary`
+on hovering the header, `cursor: grab`, same muted-then-secondary
+treatment the row-level drag-to-rank grip already established
+(`DESIGN.md`'s Row anatomy section) — one grip visual language for both
+scales, row and board. A card or group mid-drag drops to `opacity: 0.5`,
+also matching the row-level drag's dimming. No drop-target highlight on
+hover (a group that can accept the dragged block, or a reorder slot
+opening up) — the live reflow (the board visibly reshuffling as you
+drag past other cards) is the feedback, an extra highlight layer would
+be redundant chrome on top of motion that already reads clearly.
+
 ## Groups
 
 A group reuses `.card`'s exact box treatment (`--surface`, `1px solid
@@ -225,9 +240,10 @@ var(--border)`, 12px radius, 16px padding) — same visual language as
 every other board item, not a second container style. Always spans the
 board's full current column count.
 
-- **Header**: chevron toggle (`ChevronDown` expanded / `ChevronRight`
-  collapsed, `lucide-react`, matching the outline-icon rule) leading,
-  then the title at the same 15px/600 weight as a card's own title
+- **Header**: drag grip leading (see Drag handle, above), then the
+  chevron toggle (`ChevronDown` expanded / `ChevronRight` collapsed,
+  `lucide-react`, matching the outline-icon rule), then the title at
+  the same 15px/600 weight as a card's own title
   (click anywhere on it to rename in place — text cursor on hover signals
   this), then a small `--text-muted` "N blocks" count, then the group's
   own kebab, right-aligned — same header anatomy as a regular card,
@@ -248,7 +264,11 @@ board's full current column count.
   existing groups as plain rows plus a "New group name" text input +
   "Create" button beneath a divider. `FolderMinus` icon when already
   grouped — a single click, no dropdown, since removing is the only
-  option at that point.
+  option at that point. This is the menu-driven path; dragging a card
+  by its grip onto a group (or a grouped card's grip out onto the open
+  board) does the same two actions without opening anything, per the
+  Drag handle section above — both paths write to the same state, use
+  whichever's convenient.
 - **Delete confirmation**: same inline-swap-the-row pattern as
   Settings' connector delete-with-usage-warning, not a native
   `confirm()` — the kebab's dropdown content swaps to "Delete the
