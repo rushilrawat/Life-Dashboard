@@ -209,6 +209,11 @@ per-user token storage and is explicitly out of scope here.
 - Recurring events are expanded to concrete occurrences by Google's own
   `singleEvents=true` param — the adapter never parses a recurrence
   rule itself.
+- `this-week`'s day buckets are computed in the server's local
+  timezone (`toISOString()` after a local-midnight `Date`), while a
+  timed event's date comes from Google's `dateTime` (UTC) truncated to
+  its date portion — a timed event close to midnight can land in the
+  adjacent day column. Fine for a v1 read-only view, not fixed here.
 
 ## Sync
 

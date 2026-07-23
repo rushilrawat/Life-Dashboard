@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { chmodSync, readFileSync, writeFileSync } from "node:fs";
 
 // Shared OAuth2 helper for google-calendar.ts and the /api/auth/google/*
 // routes in index.ts — token exchange/refresh and persisting the refresh
@@ -9,9 +10,17 @@ const REDIRECT_URI = "http://localhost:3001/api/auth/google/callback";
 const SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
+// CSRF guard (RFC 6749 §10.12): buildAuthUrl mints a one-time state value
+// and callers must pass it back to verifyAndConsumeState before the
+// callback trusts the code. A single in-memory slot is enough for one local
+// user with one in-flight Connect click at a time — a multi-user deployment
+// would need this keyed per-session instead of module-global.
+let pendingState: string | null = null;
+
 export function buildAuthUrl(): string {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) throw new Error("GOOGLE_CLIENT_ID not configured");
+  pendingState = randomBytes(16).toString("hex");
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: REDIRECT_URI,
@@ -19,8 +28,17 @@ export function buildAuthUrl(): string {
     scope: SCOPE,
     access_type: "offline",
     prompt: "consent", // forces a refresh_token even on a re-consent
+    state: pendingState,
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+}
+
+// One-time check, consumed regardless of outcome so a state value can't be
+// replayed.
+export function verifyAndConsumeState(state: string): boolean {
+  const valid = pendingState !== null && state === pendingState;
+  pendingState = null;
+  return valid;
 }
 
 export async function exchangeCodeForRefreshToken(code: string): Promise<string> {
@@ -81,7 +99,10 @@ export async function getAccessToken(): Promise<string> {
 // hand-pasted into .env by the user (GITHUB_TOKEN, the weather adapter's
 // none-at-all) — so persisting it is the app's job. Updates the key in
 // place if already present, else appends it; also sets process.env
-// directly so it takes effect without a server restart.
+// directly so it takes effect without a server restart. Written owner-only
+// (0600) since it holds a live refresh token — writeFileSync's mode option
+// only applies when the file doesn't already exist, so an explicit chmod
+// follows to cover the update-in-place case too.
 export function persistRefreshToken(token: string): void {
   process.env.GOOGLE_REFRESH_TOKEN = token;
 
@@ -98,5 +119,6 @@ export function persistRefreshToken(token: string): void {
     : content.trimEnd().length > 0
       ? `${content.trimEnd()}\n${line}\n`
       : `${line}\n`;
-  writeFileSync(envPath, updated);
+  writeFileSync(envPath, updated, { mode: 0o600 });
+  chmodSync(envPath, 0o600);
 }

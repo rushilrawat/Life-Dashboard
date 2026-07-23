@@ -1,7 +1,7 @@
 import express from "express";
 import type { ConnectorService, SyncRequest, SyncResponse } from "../src/types.ts";
 import { requiredEnvVars, resolveApiRequest } from "./adapters/index.ts";
-import { buildAuthUrl, exchangeCodeForRefreshToken, persistRefreshToken } from "./googleAuth.ts";
+import { buildAuthUrl, exchangeCodeForRefreshToken, persistRefreshToken, verifyAndConsumeState } from "./googleAuth.ts";
 
 // Native env loading, no dotenv dependency. Missing .env is fine — each
 // adapter reports its own missing-credential error per request rather
@@ -75,8 +75,13 @@ app.get("/api/auth/google/start", (_req, res) => {
 
 app.get("/api/auth/google/callback", async (req, res) => {
   const code = String(req.query.code ?? "");
+  const state = String(req.query.state ?? "");
   if (!code) {
     res.status(400).send("Missing code");
+    return;
+  }
+  if (!verifyAndConsumeState(state)) {
+    res.status(400).send("Invalid or expired state — start the connection again from Settings");
     return;
   }
   try {

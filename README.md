@@ -33,8 +33,8 @@ differently-configured blocks.
 
 ## Block types
 
-Eleven display shapes, each usable with either source kind (`text` and
-`links` are local-only, they hold content directly):
+Twelve display shapes, each usable with either source kind (`text`,
+`links`, and `embed` are local-only, they hold content directly):
 
 | Type | Shape |
 |---|---|
@@ -49,6 +49,7 @@ Eleven display shapes, each usable with either source kind (`text` and
 | `week` | Seven day-columns with a short entry list each — calendar events, or tasks due this week |
 | `text` | One plain textarea, no rich formatting |
 | `links` | A small bookmark organizer grouped by category, with its own add form |
+| `embed` | A curated embed for one allowlisted provider (YouTube, Google Sheets, Figma, Loom) |
 
 ## Quick start
 
