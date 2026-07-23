@@ -347,6 +347,16 @@ to the first local, tasks-sourced block on the board (block-level, not
 a per-row scroll — consistent with how "Jump to block" already works).
 See `ARCHITECTURE.md`'s Command palette section.
 
+A fifteenth post-roadmap addition, same session: JSON export/import for
+the whole board — `localStorage` has no backup mechanism of its own,
+and this was the last real gap. Two new header icons next to Select;
+export is an instant download, import validates the file's shape,
+confirms before overwriting (the one native-dialog exception to this
+app's usual toast+undo pattern — see `ARCHITECTURE.md`'s new "Backup
+and restore" section for why a reload-safe undo wasn't worth building
+here), then reloads. `sync-cache` entries are deliberately excluded
+from the backup, they're a re-fetchable cache, not durable data.
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-

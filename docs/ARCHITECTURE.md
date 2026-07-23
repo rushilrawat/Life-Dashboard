@@ -587,6 +587,40 @@ of ephemeral state isn't warranted.
 - **Scope**: Undo is delete-only in this pass, not a general undo/redo
   stack — that's a much bigger feature than what was asked for here.
 
+## Backup and restore
+
+`localStorage` has no server-side backup, so `src/lib/backup.ts` gives
+the header two new icon buttons (Export/Import, next to Select) that
+turn the whole board into one downloadable JSON file and back.
+
+- **Export** (`exportBackup()`) reads `blocks`, `groups`, `tasks`,
+  `metrics`, `settings`, and every existing block's `blockdata:<id>`
+  straight from `storage.ts`, bundles them into one object plus a
+  `version`/`exportedAt`, and triggers a browser download
+  (`Blob` + a throwaway `<a download>`, no server round-trip needed
+  since it's already all local). `sync-cache:<id>` entries are
+  deliberately excluded — they're a derived, re-fetchable result cache,
+  not durable data, and restoring a stale one would just delay the next
+  real Sync rather than help.
+- **Import** (`handleImportBackup` in `App.tsx`) reads the picked file,
+  `JSON.parse`s it, and runs it through `isBackupData()` — a minimal
+  shape check (the right top-level arrays/objects are present), not a
+  full schema validator, just enough to reject "that's not a life
+  dashboard backup" before anything is overwritten. A parse failure or
+  a failed shape check shows a toast and stops there.
+- **Confirm-before-overwrite**: restoring replaces every durable key at
+  once, so it's the one place in the app that uses a native
+  `window.confirm()` rather than the toast+undo pattern the rest of the
+  app uses for deletes (see below) — building a reload-safe undo for a
+  whole-board overwrite is real state to carry, and the backup file the
+  user just picked (freshly exportable before every import) already is
+  the undo path. `restoreBackup()` writes every key back via
+  `storage.set`, then the caller does a plain `window.location.reload()`
+  — the simplest way to get every component (including the ones that
+  read `tasks`/`metrics` straight from storage rather than React state)
+  to reflect the new data, since a whole-board restore is rare and
+  heavy enough that a full reload is a reasonable cost.
+
 ## Bulk select
 
 Header's new "Select blocks" toggle (`selectMode` in `App.tsx`, next to

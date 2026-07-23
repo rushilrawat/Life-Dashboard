@@ -10,6 +10,7 @@ import SettingsPanel from "./components/SettingsPanel";
 import Sidebar from "./components/Sidebar";
 import ToastStack from "./components/ToastStack";
 import type { ToastItem } from "./components/ToastStack";
+import { exportBackup, isBackupData, restoreBackup } from "./lib/backup";
 import * as storage from "./lib/storage";
 import { buildSyncRequests, applySyncResponse } from "./lib/sync";
 import { applyTheme } from "./styles/themes";
@@ -335,6 +336,32 @@ export default function App() {
     exitSelectMode();
   }
 
+  // Restore overwrites every durable localStorage key at once, so it gets a
+  // native confirm() rather than the toast+undo pattern the rest of the app
+  // uses for deletes — a full-board restore is rare and heavy enough that a
+  // reload-driven "undo" isn't worth the extra state to build; the backup
+  // file the user just picked (and can export again before importing) is
+  // already the undo path. ponytail: simplest correct guard, upgrade to an
+  // in-app confirm dialog if this ever needs to match the rest of the UI.
+  async function handleImportBackup(file: File) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await file.text());
+    } catch {
+      pushToast("That file isn't valid JSON");
+      return;
+    }
+    if (!isBackupData(parsed)) {
+      pushToast("That file isn't a life dashboard backup");
+      return;
+    }
+    if (!window.confirm("Restore this backup? It replaces every block, task, and metric currently on your board.")) {
+      return;
+    }
+    restoreBackup(parsed);
+    window.location.reload();
+  }
+
   function dismissReviewBanner() {
     storage.set("last-review", new Date().toISOString());
     setShowReviewBanner(false);
@@ -409,6 +436,8 @@ export default function App() {
           onSync={handleSync}
           selectMode={selectMode}
           onToggleSelectMode={toggleSelectMode}
+          onExportBackup={exportBackup}
+          onImportBackup={handleImportBackup}
         />
         {showReviewBanner && <ReviewBanner onDismiss={dismissReviewBanner} />}
         <Board

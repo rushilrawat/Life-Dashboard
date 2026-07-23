@@ -1,4 +1,5 @@
-import { CheckSquare, RefreshCw, Settings as SettingsIcon } from "lucide-react";
+import { CheckSquare, Download, RefreshCw, Settings as SettingsIcon, Upload } from "lucide-react";
+import { useRef } from "react";
 
 // Greeting is derived on every render, never stored (ARCHITECTURE.md).
 // Empty displayName falls back to the bare phrase, no placeholder name.
@@ -17,6 +18,8 @@ interface Props {
   onSync: () => void;
   selectMode: boolean;
   onToggleSelectMode: () => void;
+  onExportBackup: () => void;
+  onImportBackup: (file: File) => void;
 }
 
 export default function Header({
@@ -27,12 +30,15 @@ export default function Header({
   onSync,
   selectMode,
   onToggleSelectMode,
+  onExportBackup,
+  onImportBackup,
 }: Props) {
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
     day: "numeric",
   });
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <header className="header">
@@ -55,6 +61,29 @@ export default function Header({
         >
           <CheckSquare size={18} />
         </button>
+        <button className="icon-btn" type="button" aria-label="Export backup" title="Export backup (JSON)" onClick={onExportBackup}>
+          <Download size={18} />
+        </button>
+        <button
+          className="icon-btn"
+          type="button"
+          aria-label="Import backup"
+          title="Import backup (JSON)"
+          onClick={() => importInputRef.current?.click()}
+        >
+          <Upload size={18} />
+        </button>
+        <input
+          ref={importInputRef}
+          className="file-input-hidden"
+          type="file"
+          accept="application/json"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) onImportBackup(file);
+          }}
+        />
         <button className="icon-btn" type="button" aria-label="Settings" onClick={onOpenSettings}>
           <SettingsIcon size={18} />
         </button>

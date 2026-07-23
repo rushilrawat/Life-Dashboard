@@ -91,6 +91,12 @@ category and they drop back into the grid like every other type.
 block in one batched request. A block that fails keeps its last-known
 data with a small stale indicator rather than going blank.
 
+**Backup** — the header's download/upload icons export the whole board
+(blocks, groups, tasks, metrics, settings) to one JSON file, and
+restore from one. Restoring asks for confirmation first and replaces
+everything currently on the board, so export a fresh copy before you
+import an old one.
+
 ### Connecting GitHub
 
 1. Generate a free personal access token at

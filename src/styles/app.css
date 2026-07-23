@@ -223,6 +223,10 @@
   color: var(--accent-strong);
 }
 
+.file-input-hidden {
+  display: none;
+}
+
 /* ── Hero band ───────────────────────────────────────────────────── */
 
 /* Overview-only glanceable strip (DESIGN.md's Hero band section): every
