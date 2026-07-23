@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Board from "./components/Board";
 import BlockEditor from "./components/BlockEditor";
 import type { BlockFormData } from "./components/BlockEditor";
+import CommandPalette from "./components/CommandPalette";
 import Header from "./components/Header";
 import ReviewBanner, { shouldShowReviewBanner } from "./components/ReviewBanner";
 import SettingsPanel from "./components/SettingsPanel";
@@ -46,6 +47,8 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [pendingJumpBlockId, setPendingJumpBlockId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState("Not synced yet");
   const [showReviewBanner, setShowReviewBanner] = useState(shouldShowReviewBanner);
@@ -62,6 +65,43 @@ export default function App() {
   useEffect(() => {
     storage.set("groups", groups);
   }, [groups]);
+
+  // Cmd/Ctrl+K opens the command palette from anywhere. The bare-letter
+  // shortcuts (a/s) are guarded to skip whenever a text field has focus or
+  // any overlay (palette, editor, settings) is already open, so they never
+  // hijack normal typing. Re-subscribes on every relevant state change
+  // rather than reading through a ref, since add/remove-listener is cheap
+  // at this app's single-user scale.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen(true);
+        return;
+      }
+      const target = e.target as HTMLElement;
+      const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable;
+      if (typing || paletteOpen || editor || settingsOpen) return;
+      if (e.key === "a") setEditor({ mode: "add" });
+      else if (e.key === "s") handleSync();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [paletteOpen, editor, settingsOpen, blocks, settings]);
+
+  // Jump-to-block (command palette): the target may be inside a collapsed
+  // group or hidden by the active category filter, both cleared/expanded
+  // by onJumpToBlock before this runs — retries on every render until the
+  // card actually exists in the DOM to scroll to.
+  useEffect(() => {
+    if (!pendingJumpBlockId) return;
+    const el = document.querySelector<HTMLElement>(`[data-block-id="${pendingJumpBlockId}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("jump-highlight");
+    setTimeout(() => el.classList.remove("jump-highlight"), 1500);
+    setPendingJumpBlockId(null);
+  }, [pendingJumpBlockId, blocks, groups, activeCategory]);
 
   const updateSettings = (patch: Partial<Settings>) => setSettings((s) => ({ ...s, ...patch }));
 
@@ -149,6 +189,16 @@ export default function App() {
 
   function toggleGroupCollapsed(groupId: string) {
     setGroups((gs) => gs.map((g) => (g.id === groupId ? { ...g, collapsed: !g.collapsed } : g)));
+  }
+
+  // Command palette jump-to-block: clear any category filter and expand
+  // the block's group if it's tucked inside a collapsed one, so it's
+  // guaranteed to actually be on screen — the scroll+highlight itself
+  // happens in the pendingJumpBlockId effect once the DOM catches up.
+  function jumpToBlock(blockId: string) {
+    setActiveCategory(null);
+    setGroups((gs) => gs.map((g) => (g.blockIds.includes(blockId) && g.collapsed ? { ...g, collapsed: false } : g)));
+    setPendingJumpBlockId(blockId);
   }
 
   // Ungroup releases every member block back to the top level, in their
@@ -295,6 +345,18 @@ export default function App() {
           blocks={blocks}
           onSettingsChange={updateSettings}
           onClose={() => setSettingsOpen(false)}
+        />
+      )}
+      {paletteOpen && (
+        <CommandPalette
+          blocks={blocks}
+          categories={categoriesInUse}
+          onJumpToBlock={jumpToBlock}
+          onAddBlock={() => setEditor({ mode: "add" })}
+          onSync={handleSync}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onFilterCategory={setActiveCategory}
+          onClose={() => setPaletteOpen(false)}
         />
       )}
     </>

@@ -468,6 +468,42 @@ everything else about block sizing. When a block is collapsed to its
 top 5, only those 5 are draggable; ranking a row currently hidden by the
 cap means expanding first.
 
+## Command palette and keyboard shortcuts
+
+`Cmd/Ctrl+K` opens `CommandPalette.tsx`, a global overlay listing every
+board-level action plus every block by title, filtered by one text
+input. No new state model — it's a thin action layer over functions
+`App.tsx` already has (`onAddBlock`, `handleSync`, opening Settings,
+`setActiveCategory`) plus one new one, `jumpToBlock`.
+
+- **The action list** is rebuilt from `blocks`/`categoriesInUse` each
+  render (`useMemo`), not a separate registry — Add Block, Sync, Open
+  Settings, Show Overview, one "Filter: X" per category in use, then
+  one "Jump to block" entry per block. Arrow keys move a highlighted
+  index, Enter runs the highlighted command, Escape or a backdrop click
+  closes.
+- **Jump to block**: `App.tsx.jumpToBlock(blockId)` clears any active
+  category filter and expands the block's group if it's tucked inside a
+  collapsed one — both needed so the target is actually renderable —
+  then sets `pendingJumpBlockId`. A separate effect watches that value
+  (and `blocks`/`groups`/`activeCategory`, so it retries across the
+  re-renders those state changes trigger) and, once
+  `[data-block-id="..."]` actually exists in the DOM, scrolls to it and
+  adds a brief `.jump-highlight` flash class, removed after 1.5s. Every
+  `BlockCard` carries this data attribute regardless of context
+  (top-level or nested in a group) for exactly this purpose.
+- **Keyboard shortcuts**: `a` (Add Block) and `s` (Sync), a single
+  `window` keydown listener in `App.tsx`. Guarded against firing while
+  a text field has focus (`INPUT`/`TEXTAREA`/`SELECT`/
+  `contentEditable`) or while the palette, the Add/Edit panel, or
+  Settings is already open — the same "don't hijack normal typing"
+  concern any global shortcut needs, checked once rather than per-key.
+- **No keyboard-equivalent debt**: every action the palette exposes was
+  already reachable by mouse before it existed (Add Block tile, Sync
+  button, gear icon, sidebar chips, a block's own presence on the
+  board) — the palette is a faster path to existing functionality, not
+  new functionality needing its own accessibility story.
+
 ## Personalization
 
 Header greeting is time-of-day (`"Good morning" | "Good afternoon" |

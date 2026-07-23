@@ -550,6 +550,43 @@ real data status per `CLAUDE.md`. `--accent-tint` background,
 writes `last-review` to now and hides the banner — it reappears
 naturally once 7 more days pass.
 
+## Command palette
+
+Centered near the top of the viewport (`15vh` down, not vertically
+centered — matches where this pattern conventionally sits, e.g. a
+browser's own omnibox or Spotlight), not the slide-in-from-the-right
+`.editor-overlay`/`.editor-panel` treatment every other overlay in this
+app uses. A deliberate departure: `.editor-panel` reads as "editing a
+specific thing," a command palette is a different, near-universal
+interaction with its own strong convention worth following instead of
+forcing it into this app's existing panel language.
+
+- **Shell**: `560px` wide (`90vw` max), `60vh` max height,
+  `--surface-raised` background, `1px solid var(--border-strong)`,
+  `12px` radius, a heavier drop shadow than any other element in this
+  app (`0 8px 32px rgba(0,0,0,0.4)`) — it needs to read as floating
+  above the whole board, not just above one card.
+  Same `rgba(0,0,0,0.4)` backdrop as `.editor-overlay`.
+- **Input**: full-width, no border of its own beyond a `1px` bottom
+  rule separating it from the results, `15px` text, autofocused on
+  open.
+  Placeholder: "Jump to a block or run a command…".
+- **Results**: same row anatomy spirit as everywhere else — a leading
+  icon (a generic action icon per command, `Plus` for Add Block,
+  `RefreshCw` for Sync, etc.; `SquareArrowOutUpRight` for every
+  jump-to-block entry, distinguishing "run this" from "go to this" at a
+  glance), the label, and for jump-to-block entries a small
+  `--text-muted` "Jump to block" tag trailing right, same slot the row
+  anatomy's date/tag trailing content already uses elsewhere. The
+  keyboard-highlighted (or mouse-hovered) row gets `--accent-tint`
+  background and `--accent-strong` text, same selected treatment
+  `.type-tile.selected` and `.kebab-dropdown` rows already use for
+  "this one's active."
+- **Jump flash**: landing on a block briefly outlines it
+  (`.jump-highlight`, a 2px `--accent` outline fading out over 1.2s) —
+  transient feedback, not a new persisted card state, so it reads as
+  "you arrived here" rather than "this is now selected."
+
 ## Keyboard focus
 
 One global `:focus-visible` rule — 2px `--accent` outline, 2px offset

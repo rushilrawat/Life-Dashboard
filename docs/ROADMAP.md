@@ -256,6 +256,19 @@ section and the Groups section's "How reorder-drag and group-drag
 coexist" note for the mechanism, and `DESIGN.md`'s Drag handle section
 for the visual spec.
 
+An eighth post-roadmap addition, same session: a command palette
+(`Cmd/Ctrl+K`, `CommandPalette.tsx`) listing every board-level action
+plus a jump-to-block entry per block, filtered by one text input, and
+two bare-letter keyboard shortcuts (`a` Add Block, `s` Sync) riding on
+the same global listener. Centered near the top rather than this app's
+usual slide-in-from-the-right panel — a deliberate departure, this
+pattern has its own strong, near-universal convention worth following
+instead of forcing it into the existing panel language. No new
+accessibility work needed: every action it exposes was already
+mouse-reachable before it existed. See `ARCHITECTURE.md`'s Command
+palette and keyboard shortcuts section and `DESIGN.md`'s Command
+palette section.
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-

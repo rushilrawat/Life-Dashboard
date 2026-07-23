@@ -806,6 +806,92 @@
   color: var(--text-muted);
 }
 
+/* ── Command palette ─────────────────────────────────────────────── */
+/* Centered near the top, not the slide-in-from-the-right treatment
+   .editor-overlay/.editor-panel use — a command palette is a distinct,
+   near-universal UI pattern, not another instance of "edit this thing". */
+
+.command-palette-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 15vh;
+  z-index: 100;
+}
+
+.command-palette {
+  width: 560px;
+  max-width: 90vw;
+  max-height: 60vh;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.command-palette-input {
+  padding: 16px;
+  font-size: 15px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.command-palette-input:focus {
+  outline: none;
+}
+
+.command-palette-results {
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.command-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.command-palette-item.active {
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+}
+
+.command-palette-item-meta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.command-palette-empty {
+  margin: 0;
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Jump-to-block flash (command palette result click) — a brief accent
+   ring, not a persisted style, so it's obviously transient feedback
+   rather than a new selected/active state. */
+.jump-highlight {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  transition: outline-color 1.2s ease;
+}
+
 /* ── Row anatomy (list, progress-list) ──────────────────────────── */
 
 .row {

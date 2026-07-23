@@ -221,6 +221,7 @@ export default function BlockCard({
     <div
       className={`card${isDragging ? " dragging" : ""}`}
       ref={cardRef}
+      data-block-id={block.id}
       style={{ gridColumn: `span ${effectiveWidthCols}` }}
       onDragOver={onDragOver}
       onDrop={onDrop}

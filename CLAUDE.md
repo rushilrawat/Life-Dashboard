@@ -134,7 +134,9 @@ them back without a specific new reason, "would be nice" is not one.
   block type. `GroupSection.tsx` (the collapsible-section shell) and
   `GroupPicker.tsx` (a block's own add-to-group/remove-from-group
   control) live there too, same reasoning — a group isn't a block type
-  either.
+  either. Same for `CommandPalette.tsx` — a board-level overlay, not a
+  block, its own centered treatment rather than the `.editor-*` slide-in
+  language (see `DESIGN.md`'s Command palette section for why).
 - The one local-source resolver is `resolveLocal()` in
   `src/lib/resolveLocal.ts` — every local-sourced block's data goes
   through it, no per-block bespoke storage reads. First-run sample
