@@ -504,6 +504,38 @@ input. No new state model — it's a thin action layer over functions
   board) — the palette is a faster path to existing functionality, not
   new functionality needing its own accessibility story.
 
+## Toasts and undo-delete
+
+`ToastStack.tsx`, a small fixed-position stack in the bottom-left
+corner, driven by one `toasts: ToastItem[]` array living in `App.tsx`
+alongside every other piece of central state — no Context, this app
+already has a single state hub, a parallel mechanism for one more kind
+of ephemeral state isn't warranted.
+
+- **`pushToast(message, action?, duration?)`**: appends a toast, then a
+  plain `window.setTimeout` removes it after `duration` (default
+  `TOAST_DURATION_MS`, 3000ms). Fired from three places: `saveBlock`
+  (add mode only — editing an existing block doesn't toast), `deleteBlock`
+  (see below), and `handleSync`'s completion — the header already shows
+  sync status persistently, but a toast reaches you even if you're
+  scrolled well past the header when it completes.
+- **Undo-delete**: `deleteBlock` removes the block from `blocks`/`groups`
+  state immediately (it disappears from the board right away — deleting
+  should still feel instant), but defers the genuinely irreversible
+  part — clearing `blockdata:<id>`/`sync-cache:<id>` from storage — by
+  `UNDO_WINDOW_MS` (5000ms, the same constant drives both the storage
+  cleanup delay and the toast's own visible duration, so "Undo" stops
+  being offered exactly when it would stop working). The block itself
+  (and, if it was grouped, its parent `Group`, captured before the
+  mutation) is held in the `deleteBlock` closure, not a separate "trash"
+  data structure — Undo's `onClick` just re-inserts it via `setBlocks`/
+  `setGroups` and cancels the pending cleanup timeout. If the deleted
+  block was a group's last member, dissolving the group, Undo restores
+  the group too (checked by id, not just re-added blindly, in case
+  something else changed that group state in the meantime).
+- **Scope**: Undo is delete-only in this pass, not a general undo/redo
+  stack — that's a much bigger feature than what was asked for here.
+
 ## Personalization
 
 Header greeting is time-of-day (`"Good morning" | "Good afternoon" |

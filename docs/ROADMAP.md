@@ -269,6 +269,16 @@ mouse-reachable before it existed. See `ARCHITECTURE.md`'s Command
 palette and keyboard shortcuts section and `DESIGN.md`'s Command
 palette section.
 
+A ninth post-roadmap addition, same session: a small toast layer
+(`ToastStack.tsx`, one `toasts` array in `App.tsx`, no Context) for
+block-added, block-deleted, and sync-completion feedback, plus an Undo
+action on the delete toast — deleting a block now removes it from the
+board immediately but defers actually clearing its storage
+(`blockdata:<id>`/`sync-cache:<id>`) for `UNDO_WINDOW_MS` (5 seconds),
+giving Undo something real to restore within that window. Scoped to
+delete only, not a general undo/redo stack. See `ARCHITECTURE.md`'s
+Toasts and undo-delete section and `DESIGN.md`'s Toasts section.
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-

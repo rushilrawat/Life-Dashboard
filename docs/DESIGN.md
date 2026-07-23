@@ -587,6 +587,20 @@ forcing it into this app's existing panel language.
   transient feedback, not a new persisted card state, so it reads as
   "you arrived here" rather than "this is now selected."
 
+## Toasts
+
+Bottom-left, stacked with `8px` gaps as more appear. Each toast:
+`--surface-raised` background, `1px solid var(--border-strong)`, `8px`
+radius, the same drop shadow weight as the kebab dropdown
+(`0 4px 16px rgba(0,0,0,0.25)`, lighter than the command palette's —
+a toast is a small transient notice, not a floating surface the whole
+board defers to). Plain `--text` message, an optional action button
+(`--accent-strong`, bold, no background — reads as a link-weight
+action, not a second button competing with the message) and a muted ×
+dismiss icon trailing. No entrance/exit animation beyond the browser's
+default reflow — this app doesn't animate anything else either, adding
+motion here alone would be inconsistent rather than polished.
+
 ## Keyboard focus
 
 One global `:focus-visible` rule — 2px `--accent` outline, 2px offset

@@ -7,6 +7,8 @@ import Header from "./components/Header";
 import ReviewBanner, { shouldShowReviewBanner } from "./components/ReviewBanner";
 import SettingsPanel from "./components/SettingsPanel";
 import Sidebar from "./components/Sidebar";
+import ToastStack from "./components/ToastStack";
+import type { ToastItem } from "./components/ToastStack";
 import * as storage from "./lib/storage";
 import { buildSyncRequests, applySyncResponse } from "./lib/sync";
 import { applyTheme } from "./styles/themes";
@@ -20,6 +22,12 @@ export const defaultSettings: Settings = {
 };
 
 type EditorState = { mode: "add" } | { mode: "edit"; block: Block } | null;
+
+// How long "Undo" stays live after a delete — the toast's own visible
+// duration and the actual storage cleanup delay share this one constant so
+// the button disappears exactly when it would stop working.
+const UNDO_WINDOW_MS = 5000;
+const TOAST_DURATION_MS = 3000;
 
 // One-time migration for blocks stored before the widthCols schema change
 // (width: "half"|"full" -> widthCols: 1|2|3|4) — legacy data has no
@@ -52,6 +60,7 @@ export default function App() {
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState("Not synced yet");
   const [showReviewBanner, setShowReviewBanner] = useState(shouldShowReviewBanner);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   useEffect(() => {
     storage.set("settings", settings);
@@ -65,6 +74,16 @@ export default function App() {
   useEffect(() => {
     storage.set("groups", groups);
   }, [groups]);
+
+  function pushToast(message: string, action?: ToastItem["action"], duration = TOAST_DURATION_MS) {
+    const id = crypto.randomUUID();
+    setToasts((ts) => [...ts, { id, message, action }]);
+    window.setTimeout(() => setToasts((ts) => ts.filter((t) => t.id !== id)), duration);
+  }
+
+  function dismissToast(id: string) {
+    setToasts((ts) => ts.filter((t) => t.id !== id));
+  }
 
   // Cmd/Ctrl+K opens the command palette from anywhere. The bare-letter
   // shortcuts (a/s) are guarded to skip whenever a text field has focus or
@@ -230,11 +249,44 @@ export default function App() {
     setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, widthCols, heightPx } : b)));
   }
 
+  // Removes the block from state immediately (it disappears from the board
+  // right away), but defers the actually-irreversible part — clearing its
+  // blockdata/sync-cache — for UNDO_WINDOW_MS, giving the toast's Undo
+  // button something real to restore. `parentGroup` is captured before the
+  // mutation so undo can put the block back exactly where it was, including
+  // re-creating the group if it had been the last member (dissolved by
+  // this same delete).
   function deleteBlock(id: string) {
+    const block = blocks.find((b) => b.id === id);
+    if (!block) return;
+    const parentGroup = groups.find((g) => g.blockIds.includes(id));
+
     setBlocks((bs) => bs.filter((b) => b.id !== id));
     setGroups((gs) => gs.map((g) => ({ ...g, blockIds: g.blockIds.filter((bid) => bid !== id) })).filter((g) => g.blockIds.length > 0));
-    storage.remove(`blockdata:${id}`);
-    storage.remove(`sync-cache:${id}`);
+
+    const cleanupTimeout = window.setTimeout(() => {
+      storage.remove(`blockdata:${id}`);
+      storage.remove(`sync-cache:${id}`);
+    }, UNDO_WINDOW_MS);
+
+    pushToast(
+      `"${block.title}" deleted`,
+      {
+        label: "Undo",
+        onClick: () => {
+          window.clearTimeout(cleanupTimeout);
+          setBlocks((bs) => [...bs, block]);
+          if (parentGroup) {
+            setGroups((gs) =>
+              gs.some((g) => g.id === parentGroup.id)
+                ? gs.map((g) => (g.id === parentGroup.id ? { ...g, blockIds: [...g.blockIds, id] } : g))
+                : [...gs, parentGroup],
+            );
+          }
+        },
+      },
+      UNDO_WINDOW_MS,
+    );
   }
 
   function updateSource(id: string, source: LocalSource) {
@@ -269,9 +321,14 @@ export default function App() {
 
       applySyncResponse(response, immediateFailures);
       const failedCount = response.failed.length + immediateFailures.length;
-      setSyncStatus(failedCount > 0 ? `Synced — ${failedCount} block${failedCount === 1 ? "" : "s"} failed` : "Synced just now");
+      const status = failedCount > 0 ? `Synced — ${failedCount} block${failedCount === 1 ? "" : "s"} failed` : "Synced just now";
+      setSyncStatus(status);
+      // The header already shows this persistently, but a toast reaches
+      // you even if you're scrolled well past it when the sync completes.
+      pushToast(status);
     } catch {
       setSyncStatus("Sync failed");
+      pushToast("Sync failed");
     } finally {
       setSyncing(false);
     }
@@ -283,6 +340,7 @@ export default function App() {
       setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, ...data } : b)));
     } else {
       setBlocks((bs) => [...bs, { id: crypto.randomUUID(), order: nextTopLevelOrder(), ...data }]);
+      pushToast(`"${data.title}" added`);
     }
     setEditor(null);
   }
@@ -359,6 +417,7 @@ export default function App() {
           onClose={() => setPaletteOpen(false)}
         />
       )}
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </>
   );
 }
