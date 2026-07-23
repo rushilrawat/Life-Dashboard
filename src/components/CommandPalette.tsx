@@ -1,6 +1,7 @@
 import {
   Filter,
   LayoutGrid,
+  ListTodo,
   Plus,
   RefreshCw,
   Settings as SettingsIcon,
@@ -8,6 +9,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
+import * as storage from "../lib/storage";
 import type { Block } from "../types";
 
 interface Command {
@@ -53,6 +55,15 @@ export default function CommandPalette({
     inputRef.current?.focus();
   }, []);
 
+  // The block that would show a given task: the first local, tasks-sourced
+  // block, regardless of its own filter — jumping to the block itself (not
+  // highlighting a specific row) is enough, same block-level granularity as
+  // "Jump to block" above.
+  const tasksBlockId = useMemo(
+    () => blocks.find((b) => b.source?.kind === "local" && b.source.collection === "tasks")?.id,
+    [blocks],
+  );
+
   const commands: Command[] = useMemo(
     () => [
       { id: "add-block", label: "Add Block", icon: Plus, run: onAddBlock },
@@ -72,8 +83,17 @@ export default function CommandPalette({
         icon: SquareArrowOutUpRight,
         run: () => onJumpToBlock(b.id),
       })),
+      ...(tasksBlockId
+        ? (storage.get("tasks") ?? []).map((t) => ({
+            id: `task-${t.id}`,
+            label: t.title,
+            meta: "Task",
+            icon: ListTodo,
+            run: () => onJumpToBlock(tasksBlockId),
+          }))
+        : []),
     ],
-    [blocks, categories, onAddBlock, onSync, onOpenSettings, onFilterCategory, onJumpToBlock],
+    [blocks, categories, tasksBlockId, onAddBlock, onSync, onOpenSettings, onFilterCategory, onJumpToBlock],
   );
 
   const filtered = useMemo(() => {

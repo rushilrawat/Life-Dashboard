@@ -518,10 +518,21 @@ input. No new state model — it's a thin action layer over functions
 
 - **The action list** is rebuilt from `blocks`/`categoriesInUse` each
   render (`useMemo`), not a separate registry — Add Block, Sync, Open
-  Settings, Show Overview, one "Filter: X" per category in use, then
-  one "Jump to block" entry per block. Arrow keys move a highlighted
-  index, Enter runs the highlighted command, Escape or a backdrop click
-  closes.
+  Settings, Show Overview, one "Filter: X" per category in use, one
+  "Jump to block" entry per block, then one "Task" entry per row in the
+  local `tasks` collection (`storage.get("tasks")`, read directly the
+  same way `taskActions.ts` does — this is a search index, not block
+  rendering, so it doesn't go through `resolveLocal()`). Arrow keys move
+  a highlighted index, Enter runs the highlighted command, Escape or a
+  backdrop click closes.
+- **Task search** matches task titles and, like a block entry, runs
+  `onJumpToBlock` — but always against the *first* local, tasks-sourced
+  block on the board, regardless of that block's own filter/sort. This
+  is block-level granularity, same as "Jump to block": there's no
+  per-row highlight, and a task hidden by its block's own filter (e.g.
+  a done task under a `"done"`-excluding filter) still jumps you to the
+  right block, just not to a visibly-scrolled-to row. If the board has
+  no tasks-sourced block, no task entries are listed at all.
 - **Jump to block**: `App.tsx.jumpToBlock(blockId)` clears any active
   category filter and expands the block's group if it's tucked inside a
   collapsed one — both needed so the target is actually renderable —

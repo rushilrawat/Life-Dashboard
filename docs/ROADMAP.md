@@ -339,6 +339,14 @@ list now means "always connected" rather than "always missing." See
 `ARCHITECTURE.md`'s Connectors section and `DATA_MODEL.md`'s Connector
 section.
 
+A fourteenth post-roadmap addition, same session: the command palette
+now searches task titles too, not just block titles and board-level
+actions — one "Task" entry per row in the local `tasks` collection,
+filtered by the same text input as everything else. Picking one jumps
+to the first local, tasks-sourced block on the board (block-level, not
+a per-row scroll — consistent with how "Jump to block" already works).
+See `ARCHITECTURE.md`'s Command palette section.
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-
