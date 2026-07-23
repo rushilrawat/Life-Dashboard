@@ -120,6 +120,29 @@ edit a `stat-grid` block → Connected service → pick the connector →
 `current-weather` (or a `table` block → `forecast`) → enter a city
 name. Click Sync.
 
+### Connecting Google Calendar
+
+The only connector that needs a real OAuth2 setup rather than a pasted
+token, since reading a calendar needs a consent grant:
+
+1. In [Google Cloud Console](https://console.cloud.google.com), create
+   (or reuse) a project, enable the Google Calendar API, then
+   Credentials → Create OAuth client ID → Web application. Add
+   `http://localhost:3001/api/auth/google/callback` as an authorized
+   redirect URI.
+2. Add the client ID and secret to `.env` as `GOOGLE_CLIENT_ID` and
+   `GOOGLE_CLIENT_SECRET`, then restart `npm run server`. Leave
+   `GOOGLE_REFRESH_TOKEN` blank — the app writes it in for you.
+3. Settings → Connectors → add one, service "Google Calendar" — it'll
+   show "Missing token" with a **Connect with Google** button. Click
+   it, sign in, grant calendar access; you'll land back on the board
+   and the connector now shows Connected.
+4. Add or edit a `list` block (`upcoming-events`) or a `week` block
+   (`this-week`) → Connected service → pick the connector → pick the
+   capability. Neither takes any params — it's always your primary
+   calendar.
+5. Click Sync.
+
 Adding another service later means writing one more adapter file in
 `server/adapters/` — see `docs/ARCHITECTURE.md`'s Source kinds section.
 

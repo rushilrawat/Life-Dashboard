@@ -99,6 +99,11 @@ export default function SettingsPanel({ settings, blocks, onSettingsChange, onCl
                     <span className="connector-status-dot" />
                     {connected ? "Connected" : "Missing token"}
                   </span>
+                  {c.service === "google-calendar" && !connected && (
+                    <a className="btn-ghost connector-connect-link" href="/api/auth/google/start">
+                      Connect with Google
+                    </a>
+                  )}
                   <button
                     type="button"
                     className="icon-btn"

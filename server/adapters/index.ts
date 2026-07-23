@@ -1,5 +1,6 @@
 import type { BlockResult, ConnectorService } from "../../src/types.ts";
 import * as github from "./github.ts";
+import * as googleCalendar from "./google-calendar.ts";
 import * as weather from "./weather.ts";
 
 export interface ApiResolveRequest {
@@ -14,6 +15,7 @@ export interface ApiResolveRequest {
 const ADAPTERS: Record<ConnectorService, typeof github> = {
   github,
   weather,
+  "google-calendar": googleCalendar,
 };
 
 export function resolveApiRequest(req: ApiResolveRequest): Promise<BlockResult | null> {

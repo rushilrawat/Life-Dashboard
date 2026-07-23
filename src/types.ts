@@ -90,7 +90,7 @@ export type BlockResult =
 export type Connector = {
   id: string;
   name: string;
-  service: "github" | "weather";
+  service: "github" | "weather" | "google-calendar";
 };
 
 export type ConnectorService = Connector["service"];
@@ -98,6 +98,7 @@ export type ConnectorService = Connector["service"];
 export const SERVICE_LABELS: Record<ConnectorService, string> = {
   github: "GitHub",
   weather: "Weather",
+  "google-calendar": "Google Calendar",
 };
 
 // A named, adapter-declared operation: what it returns (resultShape, one
@@ -146,6 +147,20 @@ export const CAPABILITIES: Record<ConnectorService, Capability[]> = {
       label: "7-day forecast",
       resultShape: "table",
       params: [{ key: "location", label: "City", type: "text" }],
+    },
+  ],
+  "google-calendar": [
+    {
+      id: "upcoming-events",
+      label: "Upcoming events",
+      resultShape: "list",
+      params: [],
+    },
+    {
+      id: "this-week",
+      label: "This week",
+      resultShape: "week",
+      params: [],
     },
   ],
 };

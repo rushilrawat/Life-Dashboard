@@ -372,6 +372,31 @@ worth discussing. A small one-time migration (`migrateMetricNames` in
 without a manual edit. See `ARCHITECTURE.md`'s Source kinds section and
 `DATA_MODEL.md`'s Metric section.
 
+A seventeenth post-roadmap addition, same session: Google Calendar, the
+third connector service and the first that needs OAuth2 rather than a
+pasted token. Originally scoped as a private-ICS-URL read (no OAuth
+infrastructure at all, fully testable today), but the person wants this
+project rollable as a public thing eventually, so real OAuth2 plumbing
+(consent screen, token exchange, refresh) was worth building now even
+though it's still a single connected account, not the multi-user auth
+system the "Explicitly out of scope" section below still rules out —
+same "one credential per service in `.env`" model as `GITHUB_TOKEN`,
+just a credential the app obtains through a consent flow and writes
+itself instead of one the person pastes in. `server/googleAuth.ts` plus
+two new backend routes, `GET /api/auth/google/start` and `/callback`;
+Settings gains a "Connect with Google" button next to a
+`google-calendar` connector that isn't connected yet. Two capabilities,
+`upcoming-events` (`list`) and `this-week` (`week` — the block type
+`DATA_MODEL.md` already described as "almost always sourced from a
+calendar connector," now actually true for the first time). Unlike
+every other feature this session, this one is genuinely unverified end
+to end — it needs a real Google Cloud OAuth client the person hasn't
+set up yet — so every piece that *could* be exercised without one was:
+the auth-URL builder, both route error paths (missing client ID,
+missing code), and the Settings UI round-trip (add connector, service
+picker, Connect button appears/disappears correctly, status badge). See
+`ARCHITECTURE.md`'s new Google Calendar subsection under Connectors.
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-

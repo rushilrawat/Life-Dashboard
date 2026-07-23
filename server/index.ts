@@ -1,6 +1,7 @@
 import express from "express";
 import type { ConnectorService, SyncRequest, SyncResponse } from "../src/types.ts";
 import { requiredEnvVars, resolveApiRequest } from "./adapters/index.ts";
+import { buildAuthUrl, exchangeCodeForRefreshToken, persistRefreshToken } from "./googleAuth.ts";
 
 // Native env loading, no dotenv dependency. Missing .env is fine — each
 // adapter reports its own missing-credential error per request rather
@@ -57,6 +58,34 @@ app.get("/api/connectors/status", (req, res) => {
     status[service] = vars.length === 0 || vars.every((v) => Boolean(process.env[v]));
   }
   res.json(status);
+});
+
+// Google Calendar's connector isn't a token you paste in like GITHUB_TOKEN —
+// it's a single-account OAuth2 consent flow, so the backend needs its own
+// two routes to run it (see googleAuth.ts). The Settings panel links here
+// directly (a plain page navigation, not a fetch) since step one is Google's
+// own consent screen, which the app doesn't render.
+app.get("/api/auth/google/start", (_req, res) => {
+  try {
+    res.redirect(buildAuthUrl());
+  } catch (err) {
+    res.status(500).send(err instanceof Error ? err.message : "Google auth failed");
+  }
+});
+
+app.get("/api/auth/google/callback", async (req, res) => {
+  const code = String(req.query.code ?? "");
+  if (!code) {
+    res.status(400).send("Missing code");
+    return;
+  }
+  try {
+    const refreshToken = await exchangeCodeForRefreshToken(code);
+    persistRefreshToken(refreshToken);
+    res.redirect("http://localhost:5173/");
+  } catch (err) {
+    res.status(500).send(err instanceof Error ? err.message : "Google auth failed");
+  }
 });
 
 app.listen(3001, () => {

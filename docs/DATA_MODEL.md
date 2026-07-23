@@ -132,7 +132,7 @@ in `server/adapters/`, not a shape change.
 type Connector = {
   id: string;
   name: string;
-  service: "github" | "weather";
+  service: "github" | "weather" | "google-calendar";
 };
 
 type ConnectorService = Connector["service"];
@@ -140,6 +140,7 @@ type ConnectorService = Connector["service"];
 const SERVICE_LABELS: Record<ConnectorService, string> = {
   github: "GitHub",
   weather: "Weather",
+  "google-calendar": "Google Calendar",
 };
 
 // A named, adapter-declared operation: what it returns (resultShape)
@@ -189,6 +190,10 @@ const CAPABILITIES: Record<ConnectorService, Capability[]> = {
       params: [{ key: "location", label: "City", type: "text" }],
     },
   ],
+  "google-calendar": [
+    { id: "upcoming-events", label: "Upcoming events", resultShape: "list", params: [] },
+    { id: "this-week", label: "This week", resultShape: "week", params: [] },
+  ],
 };
 ```
 
@@ -196,6 +201,13 @@ const CAPABILITIES: Record<ConnectorService, Capability[]> = {
 free, unauthenticated endpoints — so it's the one service whose adapter
 declares `requiredEnvVars: []`. `GET /api/connectors/status` treats a
 zero-length list as always-connected rather than always-missing.
+
+`google-calendar` needs three env vars (`GOOGLE_CLIENT_ID`,
+`GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`) instead of one, and is
+the one connector whose credential is obtained via an OAuth2 flow
+rather than hand-pasted — see `ARCHITECTURE.md`'s Connectors section.
+Its two capabilities take no params: the connected account's primary
+calendar is the only calendar in scope.
 
 ## Task (local collection)
 

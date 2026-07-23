@@ -1563,6 +1563,16 @@
 .settings-connector-row {
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+/* Forces itself (and the trailing delete button) onto their own line rather
+   than squeezing the connector name/status — flex-basis: 100% is enough to
+   break a flex row without touching the shared row layout. */
+.connector-connect-link {
+  flex-basis: 100%;
+  margin-left: 22px;
+  font-size: 12px;
 }
 
 .settings-connector-info {

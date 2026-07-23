@@ -144,17 +144,17 @@ pairing is never selectable in the first place.
 
 A connector is `{ id, name, service }` — a registration that a service
 is in use, not a credential and not a query. `service` picks which
-adapter resolves it (`"github"` or `"weather"` today). The one real
-credential per service (e.g. `GITHUB_TOKEN`) lives once in the backend's
-`.env`, never in a connector instance — this is a single-user tool, one
-account per service is the realistic case. Not every service needs a
-credential at all: `weather` (Open-Meteo) is free and unauthenticated,
-so its adapter declares no required env vars and is always "connected."
-What to fetch (capability + params) lives on each block's `ApiSource`,
-not the connector, so one connector can back many differently-configured
-blocks — two heatmaps for two different GitHub usernames don't need two
-connectors, just two blocks pointed at the same one with different
-params.
+adapter resolves it (`"github"`, `"weather"`, or `"google-calendar"`
+today). The one real credential per service (e.g. `GITHUB_TOKEN`) lives
+once in the backend's `.env`, never in a connector instance — this is a
+single-user tool, one account per service is the realistic case. Not
+every service needs a credential at all: `weather` (Open-Meteo) is free
+and unauthenticated, so its adapter declares no required env vars and is
+always "connected." What to fetch (capability + params) lives on each
+block's `ApiSource`, not the connector, so one connector can back many
+differently-configured blocks — two heatmaps for two different GitHub
+usernames don't need two connectors, just two blocks pointed at the same
+one with different params.
 
 Connectors are referenced by ID from any number of `api`-sourced blocks,
 deleting a connector should warn if blocks still reference it rather
@@ -163,6 +163,52 @@ connected/missing status (`GET /api/connectors/status`, checks the
 adapter's required env vars against `.env` without ever exposing their
 values) — this is checked proactively, not discovered only after a
 failed sync.
+
+### Google Calendar: the one OAuth2 connector
+
+Every other service's credential is a static token the user generates
+on that service's own site and pastes into `.env` by hand (`GITHUB_TOKEN`).
+Google Calendar is the exception — reading a calendar needs a consent
+grant, not just a key, so its credential is a refresh token obtained
+through a real OAuth2 dance. This is still a single-account connector,
+not a multi-user login system: one Google account's tokens, stored in
+`.env` exactly like every other credential, just three env vars instead
+of one (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and
+`GOOGLE_REFRESH_TOKEN`, which the app writes itself rather than the
+user pasting it in, see below). A future multi-user pivot would need
+per-user token storage and is explicitly out of scope here.
+
+- **`server/googleAuth.ts`** holds the OAuth2 mechanics shared by the
+  adapter and the auth routes: `buildAuthUrl()` (the consent-screen
+  URL, `access_type=offline&prompt=consent` so a refresh token is
+  always issued), `exchangeCodeForRefreshToken(code)` (authorization
+  code → refresh token, called once from the callback route),
+  `getAccessToken()` (refresh token → a fresh access token, called by
+  the adapter on every capability call — no caching against the
+  access token's ~1hr expiry, call volume here is one manual Sync
+  click at a time, not worth the bookkeeping), and
+  `persistRefreshToken(token)` (writes `GOOGLE_REFRESH_TOKEN` into
+  `.env` in place, plus `process.env` directly so it's live without a
+  restart).
+- **Two routes in `server/index.ts`**: `GET /api/auth/google/start`
+  redirects to Google's consent screen; `GET /api/auth/google/callback`
+  receives the authorization code, exchanges and persists the refresh
+  token, then redirects back to the frontend. Settings links to
+  `/api/auth/google/start` as a plain `<a href>` (a real page
+  navigation, not a fetch) whenever a `google-calendar` connector isn't
+  yet connected — step one is Google's own consent screen, which this
+  app doesn't and shouldn't render itself.
+- **Capabilities**: `upcoming-events` (`list`, next 30 days) and
+  `this-week` (`week` — the block type `DATA_MODEL.md` already
+  documents as "almost always sourced from a calendar connector").
+  Neither takes params; unlike GitHub/Weather there's no per-block
+  username or city, the connected account's primary calendar is the
+  only calendar in scope, keeping this to the read-only "upcoming
+  events" surface the feature actually asked for, not a general
+  read/write calendar integration.
+- Recurring events are expanded to concrete occurrences by Google's own
+  `singleEvents=true` param — the adapter never parses a recurrence
+  rule itself.
 
 ## Sync
 
