@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Board from "./components/Board";
 import BlockEditor from "./components/BlockEditor";
 import type { BlockFormData } from "./components/BlockEditor";
+import BulkActionBar from "./components/BulkActionBar";
 import CommandPalette from "./components/CommandPalette";
 import Header from "./components/Header";
 import ReviewBanner, { shouldShowReviewBanner } from "./components/ReviewBanner";
@@ -61,6 +62,8 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState("Not synced yet");
   const [showReviewBanner, setShowReviewBanner] = useState(shouldShowReviewBanner);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     storage.set("settings", settings);
@@ -293,6 +296,45 @@ export default function App() {
     setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, source } : b)));
   }
 
+  function toggleSelectMode() {
+    setSelectMode((v) => !v);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds((ids) => {
+      const next = new Set(ids);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }
+
+  // Bulk actions all reuse the existing single-item mutators in a loop
+  // rather than bespoke bulk logic — deleteBlock's own toast+undo fires
+  // once per block, giving more granular undo than a single "N deleted"
+  // toast would, not less.
+  function bulkDelete() {
+    selectedIds.forEach((id) => deleteBlock(id));
+    exitSelectMode();
+  }
+
+  function bulkMoveToGroup(groupId: string) {
+    selectedIds.forEach((id) => addBlockToGroup(id, groupId));
+    exitSelectMode();
+  }
+
+  function bulkSetCategory(category: string) {
+    const trimmed = category.trim();
+    setBlocks((bs) => bs.map((b) => (selectedIds.has(b.id) ? { ...b, category: trimmed || undefined } : b)));
+    exitSelectMode();
+  }
+
   function dismissReviewBanner() {
     storage.set("last-review", new Date().toISOString());
     setShowReviewBanner(false);
@@ -365,6 +407,8 @@ export default function App() {
           syncing={syncing}
           syncStatus={syncStatus}
           onSync={handleSync}
+          selectMode={selectMode}
+          onToggleSelectMode={toggleSelectMode}
         />
         {showReviewBanner && <ReviewBanner onDismiss={dismissReviewBanner} />}
         <Board
@@ -385,8 +429,22 @@ export default function App() {
           onRenameGroup={renameGroup}
           onToggleGroupCollapsed={toggleGroupCollapsed}
           onDeleteGroup={deleteGroup}
+          selectMode={selectMode}
+          selectedIds={selectedIds}
+          onToggleSelected={toggleSelected}
         />
       </main>
+      {selectMode && selectedIds.size > 0 && (
+        <BulkActionBar
+          count={selectedIds.size}
+          groups={groups}
+          categoriesInUse={categoriesInUse}
+          onDelete={bulkDelete}
+          onMoveToGroup={bulkMoveToGroup}
+          onSetCategory={bulkSetCategory}
+          onCancel={exitSelectMode}
+        />
+      )}
       {editor && (
         <BlockEditor
           mode={editor.mode}

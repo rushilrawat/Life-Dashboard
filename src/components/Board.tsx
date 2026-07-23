@@ -334,6 +334,9 @@ interface Props {
   onRenameGroup: (groupId: string, title: string) => void;
   onToggleGroupCollapsed: (groupId: string) => void;
   onDeleteGroup: (groupId: string, alsoDeleteBlocks: boolean) => void;
+  selectMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelected: (id: string) => void;
 }
 
 type TopLevelEntry =
@@ -358,6 +361,9 @@ export default function Board({
   onRenameGroup,
   onToggleGroupCollapsed,
   onDeleteGroup,
+  selectMode,
+  selectedIds,
+  onToggleSelected,
 }: Props) {
   const maxCols = useBoardMaxCols();
 
@@ -471,6 +477,9 @@ export default function Board({
         groupControls={groupControls}
         dragHandleProps={dragHandleProps}
         isDragging={isDragging}
+        selectMode={selectMode}
+        selected={selectedIds.has(block.id)}
+        onToggleSelected={() => onToggleSelected(block.id)}
       >
         <BlockBody block={block} onReorder={(ids) => handleRowReorder(block, ids)} />
       </BlockCard>

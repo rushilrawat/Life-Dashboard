@@ -218,6 +218,11 @@
   color: var(--text);
 }
 
+.icon-btn.active {
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+}
+
 /* ── Hero band ───────────────────────────────────────────────────── */
 
 /* Overview-only glanceable strip (DESIGN.md's Hero band section): every
@@ -933,6 +938,68 @@
 
 .toast-dismiss {
   color: var(--text-muted);
+}
+
+/* ── Bulk select ─────────────────────────────────────────────────── */
+
+.card-select-checkbox {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.card.selected {
+  border-color: var(--accent);
+}
+
+.bulk-action-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  font-size: 13px;
+}
+
+.bulk-action-count {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.bulk-action-select {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.bulk-action-category {
+  display: flex;
+  gap: 6px;
+}
+
+.bulk-action-category .text-input {
+  width: 140px;
+}
+
+.bulk-action-delete {
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 /* ── Row anatomy (list, progress-list) ──────────────────────────── */

@@ -32,6 +32,9 @@ interface Props {
   groupControls: GroupControls;
   dragHandleProps: DragHandleProps;
   isDragging: boolean;
+  selectMode: boolean;
+  selected: boolean;
+  onToggleSelected: () => void;
 }
 
 interface KebabProps {
@@ -144,6 +147,9 @@ export default function BlockCard({
   groupControls,
   dragHandleProps,
   isDragging,
+  selectMode,
+  selected,
+  onToggleSelected,
 }: Props) {
   const { draggable, onDragStart, onDragEnd, onDragOver, onDrop } = dragHandleProps;
   const local = block.source?.kind === "local" ? block.source : null;
@@ -219,7 +225,7 @@ export default function BlockCard({
 
   return (
     <div
-      className={`card${isDragging ? " dragging" : ""}`}
+      className={`card${isDragging ? " dragging" : ""}${selected ? " selected" : ""}`}
       ref={cardRef}
       data-block-id={block.id}
       style={{ gridColumn: `span ${effectiveWidthCols}` }}
@@ -227,9 +233,19 @@ export default function BlockCard({
       onDrop={onDrop}
     >
       <div className="card-header">
-        <span className="card-drag-handle" draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <GripVertical size={14} />
-        </span>
+        {selectMode ? (
+          <input
+            type="checkbox"
+            className="card-select-checkbox"
+            aria-label="Select block"
+            checked={selected}
+            onChange={onToggleSelected}
+          />
+        ) : (
+          <span className="card-drag-handle" draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+            <GripVertical size={14} />
+          </span>
+        )}
         <h2 className="card-title">{block.title}</h2>
         <div className="card-header-right">
           {syncCache?.stale && (

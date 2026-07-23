@@ -137,6 +137,8 @@ them back without a specific new reason, "would be nice" is not one.
   either. Same for `CommandPalette.tsx` — a board-level overlay, not a
   block, its own centered treatment rather than the `.editor-*` slide-in
   language (see `DESIGN.md`'s Command palette section for why).
+  `ToastStack.tsx` and `BulkActionBar.tsx` round these out, same
+  reasoning each time — board/app-level UI, not a block type.
 - The one local-source resolver is `resolveLocal()` in
   `src/lib/resolveLocal.ts` — every local-sourced block's data goes
   through it, no per-block bespoke storage reads. First-run sample

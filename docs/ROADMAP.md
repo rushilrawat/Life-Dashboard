@@ -279,6 +279,24 @@ giving Undo something real to restore within that window. Scoped to
 delete only, not a general undo/redo stack. See `ARCHITECTURE.md`'s
 Toasts and undo-delete section and `DESIGN.md`'s Toasts section.
 
+A tenth and final post-roadmap addition, same session: bulk select.
+Header's new "Select blocks" toggle swaps every card's drag grip for a
+checkbox; once at least one is checked, a fixed bottom-center action
+bar offers Delete, Move to group, and Set category — each a thin loop
+over `App.tsx`'s existing single-item mutators (`deleteBlock`,
+`addBlockToGroup`, a direct `category` set), no bulk-specific business
+logic anywhere. Selection covers blocks only, never groups themselves —
+a group already has its own explicit delete flow. See
+`ARCHITECTURE.md`'s Bulk select section and `DESIGN.md`'s Bulk select
+section.
+
+This closes out a long post-roadmap session: one bug fix (resize's
+missing migration) and nine additions (GitHub capability expansion,
+the `embed` block type, grid-snapped resize, box groups, drag-and-drop
+board reordering, drag into/out of groups, the command palette, toasts
+with undo-delete, and bulk select), each built, browser-verified, and
+committed as its own step.
+
 ## Explicitly out of scope for this roadmap
 
 Don't pull these in even if they seem like natural next steps mid-

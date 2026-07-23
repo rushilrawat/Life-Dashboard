@@ -601,6 +601,28 @@ dismiss icon trailing. No entrance/exit animation beyond the browser's
 default reflow — this app doesn't animate anything else either, adding
 motion here alone would be inconsistent rather than polished.
 
+## Bulk select
+
+Select mode swaps a card's leading grip for a checkbox (`accent-color:
+var(--accent)`, the platform checkbox rather than a custom-built one —
+same "let the platform do this" call the theme panel's native
+`<input type="color">` already made) — same slot, one or the other,
+never both. A selected card gets `--accent` border color in place of
+the default `--border`, the one card-level state this app colors by
+selection rather than status.
+
+**Bulk action bar**: fixed bottom-center (toasts stay bottom-left, no
+overlap), `--surface-raised`, `1px solid var(--border-strong)`, `10px`
+radius, same shadow weight as a toast. Left to right: a plain
+`--text-secondary` "N selected" count, a ghost Cancel button, a native
+`<select>` for "Move to group…" (only rendered if at least one group
+exists — nothing to move into otherwise), a text input + Apply for
+"Set category…" (same datalist-autocomplete pattern the Add/Edit
+panel's own category field already uses), and a filled `--danger`
+Delete button, right-most and visually heaviest — the one destructive
+action in the bar, set apart from the rest the same way a kebab's own
+Delete item already gets `--danger` treatment.
+
 ## Keyboard focus
 
 One global `:focus-visible` rule — 2px `--accent` outline, 2px offset

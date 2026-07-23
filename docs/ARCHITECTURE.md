@@ -536,6 +536,42 @@ of ephemeral state isn't warranted.
 - **Scope**: Undo is delete-only in this pass, not a general undo/redo
   stack — that's a much bigger feature than what was asked for here.
 
+## Bulk select
+
+Header's new "Select blocks" toggle (`selectMode` in `App.tsx`, next to
+Settings) puts every regular `BlockCard` into a different leading-slot
+state: the drag grip is replaced by a checkbox for as long as select
+mode is active, rather than the two coexisting — dragging and
+multi-selecting are competing intents for the same gesture space, so
+only one is offered at a time. `selectedIds: Set<string>` lives in
+`App.tsx` alongside `selectMode`; `Board.tsx` passes `selected`/
+`onToggleSelected` down to every `BlockCard`, top-level and grouped
+alike, since both render through the same shared `renderCard` helper —
+no separate wiring needed for the grouped case.
+
+- **Selection is blocks only**, never groups themselves — a group
+  already has its own explicit delete flow (kebab's "Delete group…",
+  with the keep-blocks-vs-delete-blocks choice); duplicating that
+  inside bulk mode would just be two paths to the same decision.
+- **`BulkActionBar.tsx`**, a fixed bottom-center bar, appears once
+  `selectedIds.size > 0` (not merely because select mode is on — an
+  empty selection has nothing to act on). Three actions, each a thin
+  form wrapper around a loop over `App.tsx`'s *existing* single-item
+  mutators — `bulkDelete` calls `deleteBlock` per id (so each still
+  gets its own toast and Undo, more granular than a single "N deleted"
+  toast would be, not less), `bulkMoveToGroup` calls `addBlockToGroup`
+  per id, `bulkSetCategory` sets `category` directly since there's no
+  existing single-item "set category" mutator to reuse (editing a
+  block's category today goes through the whole Add/Edit panel, not a
+  dedicated function). No bulk-specific business logic anywhere —
+  exactly the same functions a single block's kebab or `GroupPicker`
+  already call, just looped.
+- **Exiting**: any bulk action, or the bar's own Cancel, clears both
+  `selectMode` and `selectedIds` together (`exitSelectMode`) — there's
+  no "stay in select mode after acting" option, matching how e.g. a
+  file manager's bulk actions typically return you to normal browsing
+  once you've acted, not leave you mid-selection.
+
 ## Personalization
 
 Header greeting is time-of-day (`"Good morning" | "Good afternoon" |

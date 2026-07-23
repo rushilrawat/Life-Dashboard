@@ -1,4 +1,4 @@
-import { RefreshCw, Settings as SettingsIcon } from "lucide-react";
+import { CheckSquare, RefreshCw, Settings as SettingsIcon } from "lucide-react";
 
 // Greeting is derived on every render, never stored (ARCHITECTURE.md).
 // Empty displayName falls back to the bare phrase, no placeholder name.
@@ -15,9 +15,19 @@ interface Props {
   syncing: boolean;
   syncStatus: string;
   onSync: () => void;
+  selectMode: boolean;
+  onToggleSelectMode: () => void;
 }
 
-export default function Header({ displayName, onOpenSettings, syncing, syncStatus, onSync }: Props) {
+export default function Header({
+  displayName,
+  onOpenSettings,
+  syncing,
+  syncStatus,
+  onSync,
+  selectMode,
+  onToggleSelectMode,
+}: Props) {
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
@@ -35,6 +45,15 @@ export default function Header({ displayName, onOpenSettings, syncing, syncStatu
         <button className="sync-btn" type="button" disabled={syncing} onClick={onSync}>
           <RefreshCw size={14} className={syncing ? "spin" : undefined} />
           Sync
+        </button>
+        <button
+          className={`icon-btn${selectMode ? " active" : ""}`}
+          type="button"
+          aria-label={selectMode ? "Exit select mode" : "Select blocks"}
+          title={selectMode ? "Exit select mode" : "Select blocks"}
+          onClick={onToggleSelectMode}
+        >
+          <CheckSquare size={18} />
         </button>
         <button className="icon-btn" type="button" aria-label="Settings" onClick={onOpenSettings}>
           <SettingsIcon size={18} />
